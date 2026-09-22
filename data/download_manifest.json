@@ -1,0 +1,2925 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "eegdenoisenet": {
+      "homepage": "https://gin.g-node.org/NCClab/EEGdenoiseNet",
+      "license": "CC0-1.0",
+      "purpose": "clean EEG, EOG and EMG source epochs"
+    },
+    "mitdb": {
+      "homepage": "https://physionet.org/content/mitdb/1.0.0/",
+      "license": "ODC-By-1.0",
+      "purpose": "controlled cardiac artifact source waveforms"
+    },
+    "physiomotion": {
+      "homepage": "https://openneuro.org/datasets/ds006386/versions/1.0.1",
+      "license": "CC0-1.0",
+      "purpose": "real EEG motion artifacts with point-level labels",
+      "download_scope": [
+        "sub-1"
+      ]
+    },
+    "ds004784": {
+      "homepage": "https://openneuro.org/datasets/ds004784/versions/1.0.4",
+      "doi": "10.18112/openneuro.ds004784.v1.0.4",
+      "paper": "Downey, R.J.; Ferris, D.P. iCanClean Removes Motion, Muscle, Eye, and Line-Noise Artifacts from Phantom EEG. Sensors 2023, 23, 8214",
+      "paper_doi": "10.3390/s23198214",
+      "license": "CC0-1.0",
+      "purpose": [
+        "phantom_ground_truth_supervision",
+        "clean_input_negative_control",
+        "unknown_stress_test"
+      ],
+      "content": "导电头模记录：10 路脑源 + 2 路眼动 + 4 路颈肌 + 4 路面肌 + 1 路 trigger，512 Hz，GT 时长 300 s；BIDS 六个任务（Brain/Eyes/Facial/Neck/Walking/All）各 311-357 s",
+      "download_scope": [
+        "sub-001"
+      ],
+      "limitation": "GT 为 300 s 而 BIDS 记录 311-357 s，必须按 trigger 事件 65471 对齐后才能做配对监督；仅单受试者（participants.tsv: sub-001, group=phantom），结论限于该体模。"
+    }
+  },
+  "files": {
+    "mitdb": [
+      {
+        "file": "data\\raw\\mitdb\\100.atr",
+        "bytes": 4558,
+        "sha256": "8d8a5349fb16638ebbf649f1779d12e96d91b736b2aafe59db43719ae583d471"
+      },
+      {
+        "file": "data\\raw\\mitdb\\100.dat",
+        "bytes": 1950000,
+        "sha256": "b2ea3c250e56e48f4b7b90697832b8ecd1afa1e0bb31f2dcfea4ed6e1075a639"
+      },
+      {
+        "file": "data\\raw\\mitdb\\100.hea",
+        "bytes": 143,
+        "sha256": "60ebc904c7bf3e04d142638d3fd5c903e8dc9f10f1ea3264e07926aa089ee75e"
+      },
+      {
+        "file": "data\\raw\\mitdb\\101.atr",
+        "bytes": 3768,
+        "sha256": "441cdd6486cfdf4c53e344d1048ab81296773e7058d53069022adc68543a0663"
+      },
+      {
+        "file": "data\\raw\\mitdb\\101.dat",
+        "bytes": 1950000,
+        "sha256": "698d1ea6f472d23ca50317c72c96cda2698badd8578220ed0380cdf241e39006"
+      },
+      {
+        "file": "data\\raw\\mitdb\\101.hea",
+        "bytes": 131,
+        "sha256": "d5f02fbe8673fa05465442191b98ca0d28a1670e7ef0e83fb9ef8723113a311c"
+      },
+      {
+        "file": "data\\raw\\mitdb\\102.atr",
+        "bytes": 4424,
+        "sha256": "24e29031c081806ff6d4ec20fb386e28d8f885f0dca5f74dc29c881e8b196d09"
+      },
+      {
+        "file": "data\\raw\\mitdb\\102.dat",
+        "bytes": 1950000,
+        "sha256": "2b56039f9ece83b53511e0fc24e95f23b90712c8017fe4d915e040e78713c38e"
+      },
+      {
+        "file": "data\\raw\\mitdb\\102.hea",
+        "bytes": 204,
+        "sha256": "a22f09934ee1cfe339d1502f68eb3f0175815f47273b81ea55f75aeb5584cb0d"
+      },
+      {
+        "file": "data\\raw\\mitdb\\103.atr",
+        "bytes": 4196,
+        "sha256": "392ce37fbc7e89b3f14998e197a844f23cce6a3db6edaa71b4b49bf3ca5b6596"
+      },
+      {
+        "file": "data\\raw\\mitdb\\103.dat",
+        "bytes": 1950000,
+        "sha256": "f7994f0bd196730779998b4bddf26cb47f396599fb370a08b5cb29a3ac4d555d"
+      },
+      {
+        "file": "data\\raw\\mitdb\\103.hea",
+        "bytes": 142,
+        "sha256": "3da9706fc27cc5d627a31b04b74b908ac0b6e061843a87cbd57801e5ea0fed7b"
+      },
+      {
+        "file": "data\\raw\\mitdb\\105.atr",
+        "bytes": 5638,
+        "sha256": "278d534c1ad952a6d41db963b6b2b00be070d8dd5fa66545caa5c18edcc36497"
+      },
+      {
+        "file": "data\\raw\\mitdb\\105.dat",
+        "bytes": 1950000,
+        "sha256": "fcd0153dfea69c749194bb73de7db124588857cfa2f6aecb72754894c8afde02"
+      },
+      {
+        "file": "data\\raw\\mitdb\\105.hea",
+        "bytes": 258,
+        "sha256": "9a024eebf8e9baf630308815e689d7e3eab471ab0069db6aded127c396418d48"
+      }
+    ],
+    "eegdenoisenet": [
+      {
+        "file": "data\\raw\\eegdenoisenet\\EEG_all_epochs_512hz.npy",
+        "bytes": 36978768,
+        "sha256": "2f59e4b16eb7634ce2f9b2f236cc4a769a7ca7da9ab28707ccbb23b43ae55446",
+        "url": "https://gin.g-node.org/NCClab/EEGdenoiseNet/raw/master/data/EEG_all_epochs_512hz.npy"
+      },
+      {
+        "file": "data\\raw\\eegdenoisenet\\EOG_all_epochs.npy",
+        "bytes": 13926480,
+        "sha256": "fe31f2c22efce5da7488a1047b6f05d678e80f48d22e20a70972aaf13784fa0a",
+        "url": "https://gin.g-node.org/NCClab/EEGdenoiseNet/raw/master/data/EOG_all_epochs.npy"
+      },
+      {
+        "file": "data\\raw\\eegdenoisenet\\EMG_all_epochs_512hz.npy",
+        "bytes": 45858896,
+        "sha256": "21e2233a2744a4b8074cfc50ea322a35d56cbc586338e5844aa79a61fb9b7146",
+        "url": "https://gin.g-node.org/NCClab/EEGdenoiseNet/raw/master/data/EMG_all_epochs_512hz.npy"
+      }
+    ],
+    "ds004784": [
+      {
+        "file": "data\\raw\\ds004784\\.datalad\\config",
+        "bytes": 63,
+        "sha256": "3beaef3c5e588b81ab8bbdda8f49cf26e9766f3d34bf3d9f554f55bd221f7761",
+        "status": "verified",
+        "key": "ds004784/.datalad/config",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/.datalad/config"
+      },
+      {
+        "file": "data\\raw\\ds004784\\.gitattributes",
+        "bytes": 385,
+        "sha256": "8a59773996a80c81a8399a9e1f10ae8b1b33b43e66f5c90aad928fc97479564f",
+        "status": "verified",
+        "key": "ds004784/.gitattributes",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/.gitattributes"
+      },
+      {
+        "file": "data\\raw\\ds004784\\CHANGES",
+        "bytes": 595,
+        "sha256": "4947bb0d6c52040e7820f9bd6e7b0c999da2ff35de1fd1934ac712c7839abd76",
+        "status": "verified",
+        "key": "ds004784/CHANGES",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/CHANGES"
+      },
+      {
+        "file": "data\\raw\\ds004784\\README",
+        "bytes": 744,
+        "sha256": "1b92b5f2a9b5a3d1dd50e71eb81520e6d0e3cda4c8587cb468ba168d787d51ba",
+        "status": "verified",
+        "key": "ds004784/README",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/README"
+      },
+      {
+        "file": "data\\raw\\ds004784\\dataset_description.json",
+        "bytes": 583,
+        "sha256": "9c1f40baa868ac7d283e26d2e5d3a5034b076da0d50751094e61a48646828358",
+        "status": "verified",
+        "key": "ds004784/dataset_description.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/dataset_description.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\Other Part Info\\audio cable.PNG",
+        "bytes": 131928,
+        "sha256": "609c147bd68fe18bf9f76663868857ba3d3ab486ab70a753432d2833a28fba2a",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/Other Part Info/audio cable.PNG",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/Other%20Part%20Info/audio%20cable.PNG"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\0188_headwithbase_90percentReduced_bin.STEP",
+        "bytes": 32398997,
+        "sha256": "8887a5ff2e8ba7900af842cc5c60288a5b37e8eca45c835f8ac5ce5c2a85faef",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/0188_headwithbase_90percentReduced_bin.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/0188_headwithbase_90percentReduced_bin.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\93369A141_NYLON 6-6 HEX NUT_93369A141.STEP",
+        "bytes": 310046,
+        "sha256": "ac28cc10d88ff801e93dfacc2a1117efb35136e4267e701a141262e402a01ca7",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/93369A141_NYLON 6-6 HEX NUT_93369A141.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/93369A141_NYLON%206-6%20HEX%20NUT_93369A141.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\99602A535_BLACK NYLON HEX HEAD CAP SCREW_99602A535.STEP",
+        "bytes": 1027467,
+        "sha256": "4551fd8e45cd4a57c5d96616ec45e201c84607a55c5090614ce5e69192b5b3e1",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/99602A535_BLACK NYLON HEX HEAD CAP SCREW_99602A535.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/99602A535_BLACK%20NYLON%20HEX%20HEAD%20CAP%20SCREW_99602A535.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\Assem1^baseSubAssembly.STEP",
+        "bytes": 310,
+        "sha256": "563eb765b65002205204adb283e452ad791e74131e3686b02b83ddc88d840680",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/Assem1^baseSubAssembly.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/Assem1%5EbaseSubAssembly.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\Phantom_Assembly.STEP",
+        "bytes": 19435,
+        "sha256": "5c2e3cb0e0dec8fce440bc03af88c6d52097f328327ea93726f5eee7b556525c",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/Phantom_Assembly.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/Phantom_Assembly.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_SMA.STEP",
+        "bytes": 28807,
+        "sha256": "a2aa9c2b532ef43de40a1cd12143ae2fde84e23010f7bc58bc95d61f3cfa80f4",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_SMA.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_SMA.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_acc.STEP",
+        "bytes": 63016,
+        "sha256": "de0cfc7f93fbac5fe7ab36840c40ac4dea434df2415cf149761bb4a9e3ff021b",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_acc.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_acc.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_eye.STEP",
+        "bytes": 63016,
+        "sha256": "d9668a6c7142f3e94eb1d774463ba29b3b02d06edea312b9345070184ca7110d",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_eye.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_eye.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_eyeHorizontal.STEP",
+        "bytes": 99155,
+        "sha256": "2b48ad100c2d56c5e5ddf1364ad09e1cdff9bcacac1a1f390a36538e2bfc8a1e",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_eyeHorizontal.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_eyeHorizontal.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_handSM.STEP",
+        "bytes": 63035,
+        "sha256": "d54465b9785a0b42122572bfe812fa23a6042aaebc62cc39cc4a8caeb8078baf",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_handSM.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_handSM.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_legSM.STEP",
+        "bytes": 27682,
+        "sha256": "876335851c16f8590bd68f0b15be56c060614b974166ae472d3f11e679de0791",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_legSM.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_legSM.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_masseter.STEP",
+        "bytes": 99056,
+        "sha256": "90c301c39883be6fc8828031d6053abc37c8846aee282869306f4a8dfdb3a6d3",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_masseter.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_masseter.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_occip.STEP",
+        "bytes": 63001,
+        "sha256": "10d7a1307550feee03a1873b10b984b4e1b474877ffe908e0a704b16b92bf005",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_occip.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_occip.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_parietal.STEP",
+        "bytes": 63045,
+        "sha256": "492af76f3f9b92e2a5f3439eb74114f1b650ae87b96caf06782015b188b5beb9",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_parietal.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_parietal.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_prefront.STEP",
+        "bytes": 63014,
+        "sha256": "15bd5b9e77eeca02a9e5e980f384494744e2be3037a0e1ea3a9315a3bbc69411",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_prefront.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_prefront.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_premotor.STEP",
+        "bytes": 64173,
+        "sha256": "a8b9b3549711e37552f0cfa7d87aef6c3422650b2c28fb1096def8f35a37dafb",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_premotor.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_premotor.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_scm.STEP",
+        "bytes": 63015,
+        "sha256": "b30f0f709f344c7df002e4edd59206925158f605725a1df889650ab919a146d5",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_scm.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_scm.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_temporalis.STEP",
+        "bytes": 99188,
+        "sha256": "c3799771e1c0ff54a3fbd9f3f6f3f70c89ba70f7f1fc594a15740177bb1b4897",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_temporalis.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_temporalis.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\ant_trap.STEP",
+        "bytes": 63023,
+        "sha256": "731ce2be97fd089d8f6d20662ac0f74d5bff9e3b2c323b49cc6e3742b62f483c",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/ant_trap.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/ant_trap.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\antennaSubAssembly_custom_v2.STEP",
+        "bytes": 122544,
+        "sha256": "5ae1f9a9b68c790693cc64daf9d426d39e629a507531df746629a36f2afd7884",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/antennaSubAssembly_custom_v2.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/antennaSubAssembly_custom_v2.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\antenntaInset.STEP",
+        "bytes": 356505,
+        "sha256": "a91a54ac8975b39d57b4298a4ac7fbc0e5f5c1f56476acf40cc5336dcdd4c69e",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/antenntaInset.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/antenntaInset.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\antenntaInset_custom_v2.STEP",
+        "bytes": 1423870,
+        "sha256": "e9235dd85316f9b58ad5fceb2e0900275d538696c670055fdd60220e614a9bed",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/antenntaInset_custom_v2.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/antenntaInset_custom_v2.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\audioJack.STEP",
+        "bytes": 22036,
+        "sha256": "3449290fc949326a24b7cce9727990fd1f2b62fee9108974a30913307a32d5f0",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/audioJack.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/audioJack.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\baseSubAssembly.STEP",
+        "bytes": 12429,
+        "sha256": "a11397eebddb7274165247e8684125f1c627423dd0fdaa46c083433a946103af",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/baseSubAssembly.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/baseSubAssembly.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\hexapodPlatform.STEP",
+        "bytes": 128063,
+        "sha256": "dccdf8cfbd7e70b869eaf68758196ea39b6cc6f22ef31bebe89f68567285ee96",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/hexapodPlatform.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/hexapodPlatform.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\newBase.STEP",
+        "bytes": 766315,
+        "sha256": "d2c2303e317f699490569fda49efa7896cdac532b61629dc46386af9dd8ea951",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/newBase.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/newBase.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\note.txt",
+        "bytes": 50,
+        "sha256": "a42d4a237d9d3f6128aba2738342dac0b71d425d2fcd7ebaa2988fbff1a4b44a",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/note.txt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/note.txt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\rightAngleAudio.STEP",
+        "bytes": 36677,
+        "sha256": "2abd3346dacd79d4c1f62ee64ab47b46a05f1477fdf17b89101dbf2a83ad3f80",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/rightAngleAudio.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/rightAngleAudio.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Assembly\\skull_reduced_smooth_10k_correctDim_Centered_RotNasInion_scaled.STEP",
+        "bytes": 14597410,
+        "sha256": "0942fe52bb79ae356eb11979476003fe2a6d586389f8afa2c0f5d63d35bf0a25",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Assembly/skull_reduced_smooth_10k_correctDim_Centered_RotNasInion_scaled.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Assembly/skull_reduced_smooth_10k_correctDim_Centered_RotNasInion_scaled.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STEP\\Part\\Phantom_singlePartFile.STEP",
+        "bytes": 67889695,
+        "sha256": "6f23280307d67406f63f081511d387526ce0999dc7fece7b72e38ff91c28347d",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STEP/Part/Phantom_singlePartFile.STEP",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STEP/Part/Phantom_singlePartFile.STEP"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\EEG_phantom_mold_case_left_onepiece.stl.stl",
+        "bytes": 3920884,
+        "sha256": "1c432c0d10564a043bd1ba3ca7355fb92fb946537a13bfd9c763bac82953052c",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/EEG_phantom_mold_case_left_onepiece.stl.stl",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/EEG_phantom_mold_case_left_onepiece.stl.stl"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\EEG_phantom_mold_case_right_onepiece.stl.stl",
+        "bytes": 3847784,
+        "sha256": "b3fdbc2f5c241f9b03f33f75a67b1b1155b1205be2c0a9765a51303bd604346b",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/EEG_phantom_mold_case_right_onepiece.stl.stl",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/EEG_phantom_mold_case_right_onepiece.stl.stl"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_SMA_A.STL",
+        "bytes": 73684,
+        "sha256": "ba20d30bb7ebc2e065d522878742189905d947f734afa0d6b563c5f3f08f25d2",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_SMA_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_SMA_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_SMA_B.STL",
+        "bytes": 73684,
+        "sha256": "fda483a849f237509f665f1925edd805ee1d53335aaae1e09c9a69082320aa67",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_SMA_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_SMA_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_acc_A.STL",
+        "bytes": 2730284,
+        "sha256": "07d6da51df9909ab18ac6263314d0279304e26eebd076cc2818e0ba1b6d5af9b",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_acc_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_acc_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_acc_B.STL",
+        "bytes": 2730284,
+        "sha256": "ae2c381c8d9179584f8777395cf91329b63478d9326ffeb4ca21cb05416fab8e",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_acc_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_acc_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_eyeHorizontal_A.STL",
+        "bytes": 13468384,
+        "sha256": "e87fdbd333715f4fecd9ab9b84f7ab07566c2dbb726dd9f145f4cc43a94d10c5",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_eyeHorizontal_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_eyeHorizontal_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_eyeHorizontal_B.STL",
+        "bytes": 13468384,
+        "sha256": "4f268dbd1b9d3b922d9d55b7c3c6f93cd2d4c0848d80b1cd7535d9775fa6d3a8",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_eyeHorizontal_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_eyeHorizontal_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_eye_A.STL",
+        "bytes": 6752584,
+        "sha256": "be0d0e35505e065b2062cd3c6e8d2af8aa754108834340b5b67d4d03f2589cc2",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_eye_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_eye_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_eye_B.STL",
+        "bytes": 6752584,
+        "sha256": "195cbdff9208cd82e83a78229c556960c3106b16cf96718d2251d77481aae85b",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_eye_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_eye_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_handSM_A.STL",
+        "bytes": 1955784,
+        "sha256": "c2da93ba63c3b95a8f5d52be03a2dc3a9cba100b36536f7c8989d8ac62d2e0c5",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_handSM_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_handSM_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_handSM_B.STL",
+        "bytes": 1955784,
+        "sha256": "5d4329e279ec3952e241c2b21b1ecf71cfee58459674697117aad8dcd1bd0ee4",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_handSM_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_handSM_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_legSM_A.STL",
+        "bytes": 73684,
+        "sha256": "6e61ed08139e9aa6a030ff6ffbf2461d8bc7165ce7c96c819d1e57f24b3a3935",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_legSM_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_legSM_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_legSM_B.STL",
+        "bytes": 73684,
+        "sha256": "dbcd08f32328c86cd4ad729a235c4b1bb1d83006a05f5ddbf9ee9fa3f875dca8",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_legSM_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_legSM_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_masseter_A.STL",
+        "bytes": 11992184,
+        "sha256": "72bccf3dfe3eb7debb72995ce8535da6e74a178bbee16d1b99899183d9b8722e",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_masseter_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_masseter_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_masseter_B.STL",
+        "bytes": 11992184,
+        "sha256": "64c9fab0fa0e8c85242ddfefb147eb3a3d8b93e6f1a3bc4e1781325dd79ed2bc",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_masseter_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_masseter_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_occip_A.STL",
+        "bytes": 5903684,
+        "sha256": "7a1fa8dfdbd58d0a0568a42cfed3fbe85ccdfaa483da3900c53911c6216e0ea6",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_occip_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_occip_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_occip_B.STL",
+        "bytes": 5903684,
+        "sha256": "aa9c70cb7f9a8fa13e5c9551386bd803a0f448d3ae3f020dc656245e1bcdfa53",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_occip_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_occip_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_parietal_A.STL",
+        "bytes": 3837284,
+        "sha256": "772309c4a5edab6d7e55fd602d9ad2af83462bb30ee005f3c241b0771990cdda",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_parietal_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_parietal_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_parietal_B.STL",
+        "bytes": 3837284,
+        "sha256": "f4f286d380fefe02c1be3e199e6d65da0a2981b32aea12115b31f4b074b77762",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_parietal_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_parietal_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_prefront_A.STL",
+        "bytes": 4944284,
+        "sha256": "9c71da29da76842d5366ac2fe22b8a6f24a25ee6ef93d25733b1fb3cbc0667e6",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_prefront_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_prefront_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_prefront_B.STL",
+        "bytes": 4944284,
+        "sha256": "f698db4fc5e75eb264079d3c677cb314ce11a3a48a74798cfe118c25b3ce8fcf",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_prefront_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_prefront_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_premotor_A.STL",
+        "bytes": 4169784,
+        "sha256": "db292e73b3beb925d9f5a87346a4fc5f967252b4ef26658f99b9d195771fdf06",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_premotor_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_premotor_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_premotor_B.STL",
+        "bytes": 4169784,
+        "sha256": "44affb54dfeee90cb0963628974b6d56302e510880bcd5fddf1827a1f88d69ed",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_premotor_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_premotor_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_scm_A.STL",
+        "bytes": 3468084,
+        "sha256": "4e83ae2f6228d7fb03187cb8b2e32bf235b458397eece2277954053646d4bc70",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_scm_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_scm_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_scm_B.STL",
+        "bytes": 3468084,
+        "sha256": "5440c3ca808ac0610872351c5cc64a8fecc4f0f2b1293e329296c19260d3564e",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_scm_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_scm_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_temporalis_A.STL",
+        "bytes": 13726684,
+        "sha256": "b44117791bd5d3e3ee24834ddaa69b908a337084cfbc2b9358b61de7057563df",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_temporalis_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_temporalis_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_temporalis_B.STL",
+        "bytes": 13726684,
+        "sha256": "f69653592edc6b0ff442f34e728a333849a8aa3f2822bc828f1afd8145ef6671",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_temporalis_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_temporalis_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_trap_A.STL",
+        "bytes": 2176984,
+        "sha256": "41dd715744ad41738122af895870230f9b84414bb26aea6d0e837e605ccdbaf5",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_trap_A.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_trap_A.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\ant_trap_B.STL",
+        "bytes": 2176984,
+        "sha256": "fe586a5d23e172272fef01327c2b97a5f867be5e2e32b602aa031b24c312e7b7",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/ant_trap_B.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/ant_trap_B.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\antenntaInset_custom_v2.STL",
+        "bytes": 28687784,
+        "sha256": "298b24493eee8ea6399bd30ddd23ddb05887615e379b804699a793dd176c992b",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/antenntaInset_custom_v2.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/antenntaInset_custom_v2.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\newBase.STL",
+        "bytes": 387784,
+        "sha256": "7054b300e1a625232eacf2cae43c9ca44ede5ec5813089f7b41738b78250bccc",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/newBase.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/newBase.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\strawCover.STL",
+        "bytes": 289684,
+        "sha256": "0f34a54131944e348aca725ec36359ba5f626dbb7ef6bc2baa37ec11b96106dc",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/strawCover.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/strawCover.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\strawCover_rightAngleA.STL",
+        "bytes": 6752384,
+        "sha256": "56317970aae74ff6c9d93382584507a40a67c44d927cb08be39b53993236b56f",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/strawCover_rightAngleA.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/strawCover_rightAngleA.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\strawCover_rightAngleB.STL",
+        "bytes": 6752384,
+        "sha256": "a4ed6fbb1efba3ebbfcd0edb51be2973b624539d7842d23d4673e959aa43a251",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/strawCover_rightAngleB.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/strawCover_rightAngleB.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\STL\\strawCover_rightAngle_alt.STL",
+        "bytes": 146284,
+        "sha256": "ce73d914da90ca07c27816512d3cbe60a8dd0bc8bc48c507df4b082a723a9740",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/STL/strawCover_rightAngle_alt.STL",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/STL/strawCover_rightAngle_alt.STL"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\0188_headwithbase_90percentReduced_bin.SLDPRT",
+        "bytes": 5653412,
+        "sha256": "2e00e053a823d92cef74e5dec3dce0b9646dfc8e16ff80ff8b5693f050fb02ca",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/0188_headwithbase_90percentReduced_bin.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/0188_headwithbase_90percentReduced_bin.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\93369A141_NYLON 6-6 HEX NUT.SLDPRT",
+        "bytes": 375571,
+        "sha256": "452131ba791e00aeecd96d9c63a8cb51e119bf6691beb386492759d140d39be9",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/93369A141_NYLON 6-6 HEX NUT.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/93369A141_NYLON%206-6%20HEX%20NUT.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\99602A535_BLACK NYLON HEX HEAD CAP SCREW.SLDPRT",
+        "bytes": 1014416,
+        "sha256": "588921533beb908c1a87101e6b186bb3b8cfe2acd1de7b9c6c5a2d5cc6e1c0c0",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/99602A535_BLACK NYLON HEX HEAD CAP SCREW.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/99602A535_BLACK%20NYLON%20HEX%20HEAD%20CAP%20SCREW.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\Phantom_Assembly.SLDASM",
+        "bytes": 5822613,
+        "sha256": "8c3c68a7360ad88ca22d3fd679538f6bb7de31ec365bb50a2a81a5d108a732c9",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/Phantom_Assembly.SLDASM",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/Phantom_Assembly.SLDASM"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_SMA.SLDPRT",
+        "bytes": 84157,
+        "sha256": "770c16bb3318aba3b327e871c3ad0ef7fa511ed544248f5f9dc37a6428aa60e0",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_SMA.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_SMA.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_acc.SLDPRT",
+        "bytes": 97082,
+        "sha256": "1e329a81932dd402bafea8be3aeb4337866894a647c060c441261119d32dc2f4",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_acc.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_acc.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_eye.SLDPRT",
+        "bytes": 101837,
+        "sha256": "2c89286424546bd66c51426ce4315661f540228f29f224d12ab44b7eb0d65f9c",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_eye.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_eye.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_eyeHorizontal.SLDPRT",
+        "bytes": 112480,
+        "sha256": "91ffd81a3156774037a28754ae0a0e17e226a9cd99b51057aeae6cdeefff9175",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_eyeHorizontal.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_eyeHorizontal.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_handSM.SLDPRT",
+        "bytes": 97338,
+        "sha256": "6a69064261dd527283a197f23463bc612f6b3fcf2da91ea2ad7403e6b80b35c9",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_handSM.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_handSM.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_legSM.SLDPRT",
+        "bytes": 84421,
+        "sha256": "2e7939c16fe2d5d0a9d5541b4842b11a03baaa29cb8d59813f6d2c3ca7810b64",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_legSM.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_legSM.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_masseter.SLDPRT",
+        "bytes": 132006,
+        "sha256": "08e253f8434cbe79bbdf2ffcba80a6e00c73df5ec69a41b3f783df1b68e19e6a",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_masseter.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_masseter.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_occip.SLDPRT",
+        "bytes": 99002,
+        "sha256": "58e12a01546bf63938720389548843e7d80d9767c54101f5742a1f2956d904ae",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_occip.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_occip.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_parietal.SLDPRT",
+        "bytes": 96500,
+        "sha256": "d56b367d74bf93b3954eb8401206349825e1df15fa1c885c56d33a7f607ddcbd",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_parietal.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_parietal.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_prefront.SLDPRT",
+        "bytes": 96649,
+        "sha256": "5ccc4ab41b8f4bf9cbfc8836d52db6a38c714047c1c996779f6d671b7a54ff8f",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_prefront.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_prefront.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_premotor.SLDPRT",
+        "bytes": 97464,
+        "sha256": "e8d1b14b5b44dabb4e438b2c6034efcda9a06ae5da15dfd4a4133d520666d99d",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_premotor.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_premotor.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_scm.SLDPRT",
+        "bytes": 116808,
+        "sha256": "ff988675c85af9edeb1d866627499293f036f1ed48ad36dfe1816c8b090e3125",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_scm.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_scm.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_temporalis.SLDPRT",
+        "bytes": 120303,
+        "sha256": "1f9b2ab401322e8f945e442de1d606dc72e0f61731c11e878e9bf8601c652406",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_temporalis.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_temporalis.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\ant_trap.SLDPRT",
+        "bytes": 122222,
+        "sha256": "bb2bf11000e520d7399cc23dc72d21df7b9b9879ade1ae3323bdbfdecf2aeb76",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/ant_trap.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/ant_trap.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\antennaSubAssembly_custom_v2.SLDASM",
+        "bytes": 769105,
+        "sha256": "a17b22c2ca5f3f08198dd7bad9a31db4760d855ae2a3a27ad2c6011f687135f9",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/antennaSubAssembly_custom_v2.SLDASM",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/antennaSubAssembly_custom_v2.SLDASM"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\antenntaInset_custom_v2.SLDPRT",
+        "bytes": 784490,
+        "sha256": "cbeb1e78147a9541209df4599c3f07d3cacc14d33f724bcbab8bb32d4aa61139",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/antenntaInset_custom_v2.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/antenntaInset_custom_v2.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\audioJack.SLDPRT",
+        "bytes": 86248,
+        "sha256": "a8bee28bdb52dc1f0949b56362097093a0040f17faff364cf4b70a2cea7ed7b2",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/audioJack.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/audioJack.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\baseSubAssembly.SLDASM",
+        "bytes": 1384295,
+        "sha256": "011fc614d50c76df4d6194707f632d86120de7be7a6b419d788a0bfa46ec74a7",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/baseSubAssembly.SLDASM",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/baseSubAssembly.SLDASM"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\hexapodPlatform.SLDPRT",
+        "bytes": 110839,
+        "sha256": "6f44533c2e66cd110923c1aa2089f1aae055f4319a3c16ebb5035a35c24389e8",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/hexapodPlatform.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/hexapodPlatform.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\newBase.SLDPRT",
+        "bytes": 566685,
+        "sha256": "044b3f61884e383bc204a630fd42ea9517585d79d44c50dd501b6673be8bedaa",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/newBase.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/newBase.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\note.txt",
+        "bytes": 52,
+        "sha256": "322459d9194841fe652f292f79d4ba94d1c425d85291ed835fd9670d4fac4ce0",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/note.txt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/note.txt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\rightAngleAudio.SLDPRT",
+        "bytes": 109031,
+        "sha256": "97b86f25c05e9900a6eef9960596e6d910d0a23289f3bac255a47ae88e96ca57",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/rightAngleAudio.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/rightAngleAudio.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Assembly\\skull_reduced_smooth_10k_correctDim_Centered_RotNasInion_scaled.SLDPRT",
+        "bytes": 8317456,
+        "sha256": "aeab2ffa361b28d5a14323421cedf506979dc47e0da5aa106c912ca499e8572f",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Assembly/skull_reduced_smooth_10k_correctDim_Centered_RotNasInion_scaled.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Assembly/skull_reduced_smooth_10k_correctDim_Centered_RotNasInion_scaled.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\CAD\\SolidWorks\\Part\\Phantom_singlePartFile.SLDPRT",
+        "bytes": 16658005,
+        "sha256": "22645d04b2976c75ed9f82f192002c72b794500daa1b6302f53a76cfaa9714c0",
+        "status": "verified",
+        "key": "ds004784/derivatives/CAD/SolidWorks/Part/Phantom_singlePartFile.SLDPRT",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/CAD/SolidWorks/Part/Phantom_singlePartFile.SLDPRT"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\QuickTestBest.xlsx",
+        "bytes": 8986,
+        "sha256": "4071bc0a3b56d5fb4c6c9905021b3bfed6c68b19c164326589d4ec94ab383b68",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/QuickTestBest.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/QuickTestBest.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\Template.xlsx",
+        "bytes": 8290,
+        "sha256": "74f1d915dc264d5a27bc7f6159a7ef3dda04720074b6009631600e9e31cc1cce",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/Template.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/Template.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\bestParams.xlsx",
+        "bytes": 11263,
+        "sha256": "7a50cdfeabdff75ac528fc50ee7916df4b06119c9c1725136bc47de3aa78e7c7",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/bestParams.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/bestParams.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\paramSweep_ASR.xlsx",
+        "bytes": 253469,
+        "sha256": "6224a955dc3c66839ecbacae3044c5247907e1bc4bd81904c73b960492711a8a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/paramSweep_ASR.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/paramSweep_ASR.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\paramSweep_Raw.xlsx",
+        "bytes": 2854,
+        "sha256": "9fb6e4030f25a27162e8169bd125fa757c5e6e5481874634a1fec3b879e8f0c1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/paramSweep_Raw.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/paramSweep_Raw.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\paramSweep_adaptiveRef.xlsx",
+        "bytes": 1187472,
+        "sha256": "403dda3c691b3582467e84412655df882bf9b366da81baa7c67cd7fed558a543",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/paramSweep_adaptiveRef.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/paramSweep_adaptiveRef.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\paramSweep_autoCCA.xlsx",
+        "bytes": 289112,
+        "sha256": "3134bedaa062663e3bdc256577d00a1a4d7e84ec420ee834cb73fa2733320e7a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/paramSweep_autoCCA.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/paramSweep_autoCCA.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\paramSweep_iCanClean.xlsx",
+        "bytes": 2661042,
+        "sha256": "60cec8926782abd6103a6327b24a03618fd1e9270ed47c366eb77d85f2f2e5c9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/paramSweep_iCanClean.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/paramSweep_iCanClean.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Excel_Results\\paramSweep_volterraIMU.xlsx",
+        "bytes": 14144,
+        "sha256": "e32ac12cc365af74aa761587a6b472c7c5cee84e9aa35ec59e46ad95c0ca13d6",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Excel_Results/paramSweep_volterraIMU.xlsx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Excel_Results/paramSweep_volterraIMU.xlsx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\IMU_Motion_1.fdt",
+        "bytes": 1996956,
+        "sha256": "e9159ac370b930a2ebce47eafc02f572942ef1b3b7af43fc3aa9e08fb55e620d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/IMU_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/IMU_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\IMU_Motion_1.set",
+        "bytes": 176665,
+        "sha256": "024d58d0e29931f3b1bb89692fd78b19deea64c36ebdcb3889365b42bf47f545",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/IMU_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/IMU_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\IMU_Motion_2.fdt",
+        "bytes": 1996956,
+        "sha256": "85c78ea7260917466ffae95f3ede0581bcd2be2d8f2284b4efbe038644eb7c20",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/IMU_Motion_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/IMU_Motion_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\IMU_Motion_2.set",
+        "bytes": 176665,
+        "sha256": "f30873b4b349a901f657b6a063dda98c0c2fe45afa611dfdfd10b56857c941b8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/IMU_Motion_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/IMU_Motion_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_All_1.fdt",
+        "bytes": 168148992,
+        "sha256": "490653405b39063b9ee081311305468a9278f0a4e7aceb730d4a5e1358ba0eed",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_All_1.set",
+        "bytes": 1775137,
+        "sha256": "a6a41a83cca92984ec8f8005be086bfb9c4cf0d4950ce9650094a4097fb3646c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_All_2.fdt",
+        "bytes": 171393024,
+        "sha256": "d08d659ea28c65499c8ed4d139f0f0c112f5ac6dd5fea464e30836d25a867e57",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_All_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_All_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_All_2.set",
+        "bytes": 1782787,
+        "sha256": "cc8fb3e3d85d00fb2fea06b70edacc3cd19370cf555e7f2f7e93ff43aa846942",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_All_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_All_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Clean_1.fdt",
+        "bytes": 193019904,
+        "sha256": "76855adefa1bac626b4e443624b94576fc49a6124c3b186333e528bfe684b1d9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Clean_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Clean_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Clean_1.set",
+        "bytes": 1833009,
+        "sha256": "e2661e476d353da9461edeca0e81c07ccb357b056a10c849ca8344db65b8b8e9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Clean_2.fdt",
+        "bytes": 177881088,
+        "sha256": "c7b5b899f79ebacb06d4b51437a59d1e550375d70744ad0f222db505aef32bd2",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Clean_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Clean_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Clean_2.set",
+        "bytes": 1797669,
+        "sha256": "137030c09d400c8f7698844d4bbfee08265e56f204d7cedd4ca37bd55d39a1c9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Clean_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Clean_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Eyes_1.fdt",
+        "bytes": 171393024,
+        "sha256": "528f57f343450180ed2611a32f67b75f2018cf7d8ea976d7e85e21f8af5948e5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Eyes_1.set",
+        "bytes": 1782787,
+        "sha256": "88924edf0545ab12e6f7333117b1f2363adaeca0600b2c0fd2d909e1ea4b7914",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Eyes_2.fdt",
+        "bytes": 168148992,
+        "sha256": "027c337a960e985749163df384f3761c44e8c7051c14ccd76d4d17ab9e974dad",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Eyes_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Eyes_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Eyes_2.set",
+        "bytes": 1775137,
+        "sha256": "34bc6de6465193ca1c6f1acade471e850b2592c696d19d02f0856b90e9512ce6",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Eyes_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Eyes_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Jaw_1.fdt",
+        "bytes": 169230336,
+        "sha256": "295f1e89b07acd091708e61573b06ea6d2faa91137055b59bb502a89ba281e3a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Jaw_1.set",
+        "bytes": 1777560,
+        "sha256": "ea2d72f8b66703af88e3716ab9c08f178ec4075f027d7d4a77a86856ea75d657",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Jaw_2.fdt",
+        "bytes": 186531840,
+        "sha256": "46e1d7c2570d8a9f83b5a3e7a1db95056db18afb7c1a6d997fd565281a84da5a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Jaw_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Jaw_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Jaw_2.set",
+        "bytes": 1817774,
+        "sha256": "5e0b93341889fec71fe855948a01f2e429cac6cbb91ae740433cd688dd248d11",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Jaw_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Jaw_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Motion_1.fdt",
+        "bytes": 177881088,
+        "sha256": "cd820e1e87a0cb22324d994417f2dd4820976795a651c984162340e2e40457ec",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Motion_1.set",
+        "bytes": 1797669,
+        "sha256": "a6f034eb3e7745133558f2a976b82de221741b8db43a5cd61c90e19cc77608fb",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Motion_2.fdt",
+        "bytes": 176259072,
+        "sha256": "1897faba52dc4bc6cc47f41f553002bc111da8efdc4d94ee754a95b9b6d9c92b",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Motion_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Motion_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Motion_2.set",
+        "bytes": 1794098,
+        "sha256": "fffc3f1042408aca1f83b4902baffda27cbda484f94f0e12f2c29ce91e9a8950",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Motion_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Motion_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Neck_1.fdt",
+        "bytes": 173015040,
+        "sha256": "9eafb04491f4c0f17b9bd3a347de928f65ad60fc68d74de5d1dd370989aae519",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Neck_1.set",
+        "bytes": 1784408,
+        "sha256": "40c1d505faf7950fd1f144d05c448e13caf73ad0c23e2889f8eaeca9efe29813",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Neck_2.fdt",
+        "bytes": 173555712,
+        "sha256": "c2df3d6178437f7c0eec2cdbd3c2a2e89cf6c258de3b2fafe028bca1a2f6e3ff",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Neck_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Neck_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NMM10_Neck_2.set",
+        "bytes": 1788023,
+        "sha256": "71f8c0ef7016aa02f05339b8dddc3665fd1533e32bb7ebd1aaddfe0c2d8e5870",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NMM10_Neck_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NMM10_Neck_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\IMU_Motion_1.fdt",
+        "bytes": 1996956,
+        "sha256": "e9159ac370b930a2ebce47eafc02f572942ef1b3b7af43fc3aa9e08fb55e620d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\IMU_Motion_1.set",
+        "bytes": 176665,
+        "sha256": "024d58d0e29931f3b1bb89692fd78b19deea64c36ebdcb3889365b42bf47f545",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\IMU_Motion_2.fdt",
+        "bytes": 1996956,
+        "sha256": "85c78ea7260917466ffae95f3ede0581bcd2be2d8f2284b4efbe038644eb7c20",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\IMU_Motion_2.set",
+        "bytes": 176665,
+        "sha256": "f30873b4b349a901f657b6a063dda98c0c2fe45afa611dfdfd10b56857c941b8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/IMU_Motion_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_All_1.fdt",
+        "bytes": 168148992,
+        "sha256": "c3f8c5810edd59c9e84bb4892bd6b3a6333756636b52a67b3562fef700b9056d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_All_1.set",
+        "bytes": 1775137,
+        "sha256": "ca3d57373d3bfb6bfbba55655b43dd1fd0702864906cb329bdba0d2ad65a14f1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_All_2.fdt",
+        "bytes": 171393024,
+        "sha256": "29f18011822ae48ad69ac9cc24a638e8ce621c673b1ec089adcc76d6d543d7cb",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_All_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_All_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_All_2.set",
+        "bytes": 1782787,
+        "sha256": "a4ca449978533c904f7bf77a03ed1818c29594c2df44a3ba1487897e1192aeb1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_All_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_All_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Clean_1.fdt",
+        "bytes": 193019904,
+        "sha256": "e890021470e75fd899c245c673c5ab8aaf9103ac98acb556edfe5a19a7110c2f",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Clean_1.set",
+        "bytes": 1833009,
+        "sha256": "07133694f700920fc5e58f2a21724d23f5f7fb38d5cb4591958ba87648873c96",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Clean_2.fdt",
+        "bytes": 177881088,
+        "sha256": "f4da59842c34ac3933323804e9bcce2c8b401db9640897f5e6311d5d4707efdc",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Clean_2.set",
+        "bytes": 1797669,
+        "sha256": "0f307581346a706549b2b85272e5cf044f76de50c022fa3f03b3f5b41ef2d8d7",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Clean_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Eyes_1.fdt",
+        "bytes": 171393024,
+        "sha256": "31d82ade3da3bc7feccbc2c58c9dc177d544dadd1454232830108c8c50a2b222",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Eyes_1.set",
+        "bytes": 1782787,
+        "sha256": "85b947adfad9c69b7a34e0621fe153c2d055b62a3e69c3eff26598e36839f03f",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Eyes_2.fdt",
+        "bytes": 168148992,
+        "sha256": "c00c79474583b78ed1b60aa0d99cc4f1c45c481ffbb9e6a9e4877bfddc592dda",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Eyes_2.set",
+        "bytes": 1775137,
+        "sha256": "2d8972c3ee335be44014a6b24b74df9952e4d20d44469bf5b68cf85d40675dcf",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Eyes_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Jaw_1.fdt",
+        "bytes": 169230336,
+        "sha256": "65b014ebb44a77c5a17f2daac3e42a67d6cb830f3a1990940e75a843b4b4b403",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Jaw_1.set",
+        "bytes": 1777560,
+        "sha256": "7692eac85ea77d902b8b0928f373f304f1810a03a0e97c87d9a0d07f9121aa3e",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Jaw_2.fdt",
+        "bytes": 186531840,
+        "sha256": "1b2ac49fc81b98e100760f71e222255ebfed50101ff14d3122fbf294491b2150",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Jaw_2.set",
+        "bytes": 1817774,
+        "sha256": "9b296b2f1c24b8309b6a7dc423d75ef42cd1e44ccf3fe4d0472f4f84d38435db",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Jaw_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Motion_1.fdt",
+        "bytes": 177881088,
+        "sha256": "91d66b2bd89b9bd0d1a6aba63801de118ce7500ffc3ed8de2d08140a46dfc850",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Motion_1.set",
+        "bytes": 1797669,
+        "sha256": "906ae2fa3d6464d9c8f117afaa809906c2f824a7c30428b49503fb45caeb4045",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Motion_2.fdt",
+        "bytes": 176259072,
+        "sha256": "fc507c70898d004423d1c480d0d2f3f3765653d8be86b4c6517bebf3e4a639f3",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Motion_2.set",
+        "bytes": 1794098,
+        "sha256": "1de3f7b5733c35476d53209e0cf50927703eb52db17e10dcd684d45814743427",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Motion_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Neck_1.fdt",
+        "bytes": 173015040,
+        "sha256": "f7e90ae1ae58f4672bc5e579cfefc1409d5293b711fd79ffaeeb031754ca5ccf",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Neck_1.set",
+        "bytes": 1784408,
+        "sha256": "ec50ff089fc7b2fdc7b90be4d297cd62f568acfefe9f0fff5baaa7c631b928d5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Neck_2.fdt",
+        "bytes": 173555712,
+        "sha256": "2486b691ac0c51582442b4c6705ceb4a2b7078c5bab337e4cd146535492db313",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_2.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_2.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Imported\\NoHP\\NMM10_Neck_2.set",
+        "bytes": 1788023,
+        "sha256": "5a62dda27cb6b83c4cf0d41eb8d327b423c3be84eac2dfa07e8ec8fb94e7936b",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_2.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Imported/NoHP/NMM10_Neck_2.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_All_1.fdt",
+        "bytes": 168148992,
+        "sha256": "aff828868eda45e5549c41e86186d8d5d7456c693bea5b48e7eb01e7e8692881",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_All_1.set",
+        "bytes": 1775185,
+        "sha256": "5084fbfc605b09b9d3aef67a94c191d92df44b436d8ad2c90bc2a508593ef377",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Clean_1.set",
+        "bytes": 387711448,
+        "sha256": "fef4a213eb6b7e89b368eb8a604e342c697d1e7895d34b1cd423115601c4fae0",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Eyes_1.fdt",
+        "bytes": 171393024,
+        "sha256": "3ff1c1d915f24466e259481514d378316d1e51ab843b492a863a272eab3197db",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Eyes_1.set",
+        "bytes": 1782843,
+        "sha256": "87830798679fee556628669fde47ac2bfc6750685eaab1ebfcbcd09ed89717e8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Jaw_1.fdt",
+        "bytes": 169230336,
+        "sha256": "2a1a2dbafb29dc8f61e4485d70c9d6ba9ca35a6cf385d02fca6ddbe481008b55",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Jaw_1.set",
+        "bytes": 1777608,
+        "sha256": "760bbc34fdd5407fca665b182f764c57471599b1042de2829cc5c172cb769e5a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Motion_1.fdt",
+        "bytes": 177881088,
+        "sha256": "a1301411826a8609a15875b196e1672b5bf914641ddf2180c4f8db54d6958022",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Motion_1.set",
+        "bytes": 1797733,
+        "sha256": "c843a032d06035eea34a42817a42696a95a6459bb30e8e065a26832fa66dc053",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Neck_1.fdt",
+        "bytes": 173015040,
+        "sha256": "f90d4166617a391f6b774a5fd3a682622dbaf4810e038224ad684cc8c23ccbd6",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\ASR\\prep_ASR_NMM10_Neck_1.set",
+        "bytes": 1784464,
+        "sha256": "f14baafe02af19e5831d9e2fe50ed8fb7cec4c6ddd79f5346695421f7c3309d9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/ASR/prep_ASR_NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_neckEMG_NMM10_Neck_1.fdt",
+        "bytes": 173015040,
+        "sha256": "5d8e87d597fc30da6b40a1c79f9d54fca82c308ad8c565dbdad807b7bd0d6950",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_neckEMG_NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_neckEMG_NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_neckEMG_NMM10_Neck_1.set",
+        "bytes": 1784584,
+        "sha256": "e5a60af95bd84e10caae9e18ce6f4048c16033fc6dd8c5c3cd59f40e7b398b87",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_neckEMG_NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_neckEMG_NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_All_1.fdt",
+        "bytes": 249675776,
+        "sha256": "0ac0640713490846d815c2b44004d68568b203b87c3440c31e4e40885aafba7a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_All_1.set",
+        "bytes": 2335497,
+        "sha256": "8c6746640bee0200f172bcfd53aa0f519ad60b7ce25ce385429a2b010caf3b07",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Clean_1.fdt",
+        "bytes": 286605312,
+        "sha256": "2833fcd15755fb6fec7de565d3e0262d6598b57a01193cafbcda098b799ebb17",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Clean_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Clean_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Clean_1.set",
+        "bytes": 2393377,
+        "sha256": "7171be5ede637dcac838884a5363da6ce7ef759c9cfcac7188b9db6cc73b2095",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Eyes_1.fdt",
+        "bytes": 254492672,
+        "sha256": "697bdb4ad5e28acbc75b3673c3e612729f7696690ec37cf63544332a2db8a55a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Eyes_1.set",
+        "bytes": 2343163,
+        "sha256": "17076bd6d67963cd4656b35429a25a045fd993235e425c5b37f36ea8cc47bca8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Jaw_1.fdt",
+        "bytes": 251281408,
+        "sha256": "66d2dd43fcc31e0b535ec7e817b7603328c9c7833283b515688017ade3ba6db0",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Jaw_1.set",
+        "bytes": 2337920,
+        "sha256": "a0562c166da5c8de4c30070195b9b4d69d0c8e8e9dc3cc57be9a493ed80fd041",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Motion_1.fdt",
+        "bytes": 264126464,
+        "sha256": "5fa8016b3a348d1a2f35274639c0fbe35d8d8564089d8f4f9c0b7af28d3b8283",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\AdaptiveFiltering\\prep_adaptiveRef_pseudoRef_NMM10_Motion_1.set",
+        "bytes": 2358045,
+        "sha256": "253c9c1455e4db60ea3164fa1ea0a69201bf245cdfdc80d2543d1ad4d9d19bb5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/AdaptiveFiltering/prep_adaptiveRef_pseudoRef_NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_All_1.fdt",
+        "bytes": 81526784,
+        "sha256": "0fd59154555403d165177cc61f4413cd248bafa946275dfc667f8e1848a36b14",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_All_1.set",
+        "bytes": 1210881,
+        "sha256": "eb37f4ec9e307e7f4a065a7a7fc4320f0aaaa7e200fdbfcdfa7d066d8cd8fc9c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Clean_1.set",
+        "bytes": 189153248,
+        "sha256": "596fe9530900ec5094acff1357526cc9891c19cbb365b117b4d8bf8f88ecd361",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Eyes_1.fdt",
+        "bytes": 83099648,
+        "sha256": "afe3e814b6f1c029be0c348e9c2b1636866def6ebc189a15dbf44f66be2d8b64",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Eyes_1.set",
+        "bytes": 1402750,
+        "sha256": "4cc994a2a0c7c47e4780a5d1a70d972ceda3a26b730a4634d916a92d6d790181",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Jaw_1.fdt",
+        "bytes": 82051072,
+        "sha256": "bda028f84231b4c0e4718348ef0ab177934e069680d0ec4611fbc29b6160e947",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Jaw_1.set",
+        "bytes": 1195559,
+        "sha256": "0784fcf9999613b3a9f1d5e11207fc3cf5d83a56d821e9a70f20cad4847be19e",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Motion_1.fdt",
+        "bytes": 86245376,
+        "sha256": "bbcd2eb6c3db01360095a81392863f9378223d89782cdf66bb4ea86b490a3746",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Motion_1.set",
+        "bytes": 1415520,
+        "sha256": "7abe5407cf60220a76f15a5f73ffa72e781f16ba671d0b2b38338ce044f0572b",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Neck_1.fdt",
+        "bytes": 83886080,
+        "sha256": "a06fde219d9fa3a57fd2651a8443f954fe38dd90a9e30342787c467d5b0683c1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Auto-CCA\\prep_autoCCA_NMM10_Neck_1.set",
+        "bytes": 1329099,
+        "sha256": "c46e4eb42c09febde4e138f2253abd6d41449acf84351be6c1e425fbbf52ab9f",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Auto-CCA/prep_autoCCA_NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_All_1.fdt",
+        "bytes": 168148992,
+        "sha256": "490653405b39063b9ee081311305468a9278f0a4e7aceb730d4a5e1358ba0eed",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_All_1.set",
+        "bytes": 1775185,
+        "sha256": "2947787a0e779e98ef80c5855f1aa1a629dae3186f99610dc0a4fd8804f3e1ee",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Clean_1.set",
+        "bytes": 387711448,
+        "sha256": "0e3a360f7acbacdbcb117f6ee48b1d4ddaf129cb375e2658cc4649137f9a9ded",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Eyes_1.fdt",
+        "bytes": 171393024,
+        "sha256": "528f57f343450180ed2611a32f67b75f2018cf7d8ea976d7e85e21f8af5948e5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Eyes_1.set",
+        "bytes": 1782843,
+        "sha256": "b3ad11e2355259f40f321013054f1f511bc25b66692c4928e6bd476df3bea446",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Jaw_1.fdt",
+        "bytes": 169230336,
+        "sha256": "295f1e89b07acd091708e61573b06ea6d2faa91137055b59bb502a89ba281e3a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Jaw_1.set",
+        "bytes": 1777608,
+        "sha256": "9bee2fd1f1df8eda30ba0705deae1f36a380b61d6a29028dc520e7f1b6a83a45",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Motion_1.fdt",
+        "bytes": 177881088,
+        "sha256": "a5bdba61a5fd2f8e3bb63eb27546219dd1d4aaa2cabf6ea87c0f2be56c409dd4",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Motion_1.set",
+        "bytes": 1797733,
+        "sha256": "65b4da9188e8085e8dd4a9e0a65332fcf7c7b76973d6359830a0c6ee6b6ab445",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Neck_1.fdt",
+        "bytes": 173015040,
+        "sha256": "9eafb04491f4c0f17b9bd3a347de928f65ad60fc68d74de5d1dd370989aae519",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\Raw\\prep_Raw_NMM10_Neck_1.set",
+        "bytes": 1784464,
+        "sha256": "29f06e52bc0d6595339b47ac10f58d3b06eb72e47102581ea55feb969b9e99e9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/Raw/prep_Raw_NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_All_1.fdt",
+        "bytes": 168148992,
+        "sha256": "7f35a11194694e8eacc4522775dcda92c831059bbb43dcb7aeace6f147c05e6c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_All_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_All_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_All_1.set",
+        "bytes": 1786681,
+        "sha256": "bcdf28268cad8f8f8ef7dbc3fbdce5c9a1604f945d1db8cfc52bea61bb3c8ce3",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_All_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_All_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Clean_1.set",
+        "bytes": 387713488,
+        "sha256": "c36f8d3a8fa41a7abfe619cb2c835caf4c2998c8660c55afac4015f160aae12d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Clean_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Clean_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Eyes_1.fdt",
+        "bytes": 171393024,
+        "sha256": "9ba70224e8440956bf1c141a29e58ee532ae5c93cbabbd8ab821b2f501eb6ea8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Eyes_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Eyes_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Eyes_1.set",
+        "bytes": 1794347,
+        "sha256": "833f2bc58f9ca36e3b68b62e666344a92f0c7b035d957b41f896659039556b75",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Eyes_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Eyes_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Jaw_1.fdt",
+        "bytes": 169230336,
+        "sha256": "6f73d226e200b88c41435821c4f354ebdffab457a0b72b9373acab43fc085ec2",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Jaw_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Jaw_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Jaw_1.set",
+        "bytes": 1789104,
+        "sha256": "e9d451bce59da5590bd4e18c6eda145eec394aeab4c69eb872725125f7fed5d5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Jaw_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Jaw_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Motion_1.fdt",
+        "bytes": 177881088,
+        "sha256": "3fac69e5a9c2bf88bc5141e622274cb7b77ed9cab9f9b2f506dadfd39532d613",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Motion_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Motion_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Motion_1.set",
+        "bytes": 1809229,
+        "sha256": "a450f3581e0d7b4b1ded2e5a2f01e54648d2a6b92e2cec1078066eb6ec8d3b72",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Motion_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Motion_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Neck_1.fdt",
+        "bytes": 173015040,
+        "sha256": "6dee2caadb1e9163e2c12496fc48ae6d63a043be30b9705874b646d6a2e65bc4",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Neck_1.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Neck_1.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Data\\Preprocessed\\iCanClean\\prep_iCanClean_pseudoRef_Notch_NMM10_Neck_1.set",
+        "bytes": 1795968,
+        "sha256": "d8c37e4e44825f6ce83bbe0ee63f19851058326809faad2282b5bfca11db0bdf",
+        "status": "verified",
+        "key": "ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Neck_1.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Data/Preprocessed/iCanClean/prep_iCanClean_pseudoRef_Notch_NMM10_Neck_1.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\How To.docx",
+        "bytes": 336506,
+        "sha256": "3bbf150f69822660de779f5201b75eec9d261b80372177629fd11f0b47349aa2",
+        "status": "verified",
+        "key": "ds004784/derivatives/How To.docx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/How%20To.docx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\How To.pdf",
+        "bytes": 372980,
+        "sha256": "5626c37c7cf4ef4d35569b1dc58d1ca4a1f532c6a280f1bb2caaa471b8e4f5bb",
+        "status": "verified",
+        "key": "ds004784/derivatives/How To.pdf",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/How%20To.pdf"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\1p5GaitEvents.mat",
+        "bytes": 6007,
+        "sha256": "fd525d080e5875d8349fa8bc41bedfab8d2de096398ac67d981b72a89767bb29",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/1p5GaitEvents.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/1p5GaitEvents.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\GT_source_order.png",
+        "bytes": 34254,
+        "sha256": "9be2ada089f5a58ec4405ae526cb882ca58e7da2772ac99270ed419f7c96e7cc",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/GT_source_order.png",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/GT_source_order.png"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\GTdata_croppedToRisingEdge.mat",
+        "bytes": 22256497,
+        "sha256": "0899f604df81262c8844664b04d9e8a38a819af2b9328caff6bb8cd52c3979e4",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/GTdata_croppedToRisingEdge.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/GTdata_croppedToRisingEdge.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\compareToGT.m",
+        "bytes": 5973,
+        "sha256": "eaacb0bdec26cffedfcaaf1df2ed020ff11eb740d64493af46db6a3d6e26a26c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/compareToGT.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/compareToGT.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\helper\\AlignDAQ2DAQ.m",
+        "bytes": 7952,
+        "sha256": "2bec6c11f1850d96cf2d2f4157f80946bbb2225667edd0a2484c0732d3d352fa",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/helper/AlignDAQ2DAQ.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/helper/AlignDAQ2DAQ.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\helper\\calcCorrectionFactor.m",
+        "bytes": 1086,
+        "sha256": "75e218c0d80c6d2d3a88ea361428eff472db792ca09629135ebc5fe0bad9e779",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/helper/calcCorrectionFactor.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/helper/calcCorrectionFactor.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\helper\\compareToGT_extra.m",
+        "bytes": 10646,
+        "sha256": "05b246f559a7a587702edacc76bd8f180f3ada863f63d252c46421e96aae27d1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/helper/compareToGT_extra.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/helper/compareToGT_extra.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Compare_Ground_Truth\\readme.txt",
+        "bytes": 790,
+        "sha256": "629fd6ffe57851aeeff55832004a64e61241eb36611eaaef99d00bfb9cc3183a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Compare_Ground_Truth/readme.txt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Compare_Ground_Truth/readme.txt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Examples\\example_calc_data_quality_pre_post_cleaning.m",
+        "bytes": 1756,
+        "sha256": "84f83e9299b4f357eaa2864c58a1e1a4921063b6cdbbdd8ecc91c4f78febe46b",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Examples/example_calc_data_quality_pre_post_cleaning.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Examples/example_calc_data_quality_pre_post_cleaning.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Examples\\iCanClean_testFindGTBrainSources.m",
+        "bytes": 3541,
+        "sha256": "95187e47f67f021e4e88b5fc996ea986cdbc914123a8fd456c5f61dac2c9e6b7",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Examples/iCanClean_testFindGTBrainSources.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Examples/iCanClean_testFindGTBrainSources.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\TestScript.m",
+        "bytes": 2168,
+        "sha256": "d0a34a6a9b2ebad23d1604173a2b0fb2d9d9b1a58930f0d9dc7286601e45bccb",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/TestScript.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/TestScript.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\axisAngle2quatern.m",
+        "bytes": 202,
+        "sha256": "1624b11f58efb16055cd0c7cf6431d242c74f33b738c31cfbd3928ce1f1e117d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/axisAngle2quatern.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/axisAngle2quatern.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\axisAngle2rotMat.m",
+        "bytes": 502,
+        "sha256": "9c5593f8af0c65048e130c8a4c763e43aba0d1e845d8920eb78a63b4f1d80670",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/axisAngle2rotMat.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/axisAngle2rotMat.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\euler2rotMat.m",
+        "bytes": 508,
+        "sha256": "0129850b3156f20dc8f134f2f5868e16d46ca42991147ed0754b60bf6e58f3a5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/euler2rotMat.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/euler2rotMat.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\quatern2euler.m",
+        "bytes": 604,
+        "sha256": "1ea6450be1f23e81ebf9b42da26a1b33dc841a31eda53ef052f95a8d4e457d16",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quatern2euler.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quatern2euler.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\quatern2rotMat.m",
+        "bytes": 527,
+        "sha256": "64c867b7667bcf68d9f12deb78b7aaecd20db91aefd4b5191350dea29a22d041",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quatern2rotMat.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quatern2rotMat.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\quaternConj.m",
+        "bytes": 82,
+        "sha256": "bef1f666bae3dc8e5769e9301f1491b8042850bfdcc36f00e274aa95b6bf2766",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quaternConj.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quaternConj.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\quaternProd.m",
+        "bytes": 337,
+        "sha256": "2c97f13816e1ea3a338aaf690ae90965995add69a53416bc747d8d8c0b9a1e88",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quaternProd.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quaternProd.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\quaternRotate.m",
+        "bytes": 162,
+        "sha256": "3dc76624c33dd7eaaf51bd2398f4cdca5064184f82637cc46f486df5d1356ce1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quaternRotate.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/quaternRotate.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\read me about this library.txt",
+        "bytes": 991,
+        "sha256": "f4a87869df0bb54760ce7af025af1b635bbbe481a0f5ac0bedf2d25f9a629f40",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/read me about this library.txt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/read%20me%20about%20this%20library.txt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\rotMat2euler.m",
+        "bytes": 354,
+        "sha256": "3d428e63cdadf86f680b10213ccf771b1ed1d8d15bf81b3e2eb273618da0359c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/rotMat2euler.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/rotMat2euler.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\External_Library_Quaternion_Math\\rotMat2quatern.m",
+        "bytes": 1300,
+        "sha256": "f8fb3d11509678ed1f21b12dcb62ea791fa02d52d49432d2760116ad843b253c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/rotMat2quatern.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/External_Library_Quaternion_Math/rotMat2quatern.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\checkConsistencyInStruct.m",
+        "bytes": 1041,
+        "sha256": "f2f2447b5975c8e264863b6f451dab279f8250618a77886269e1ad39e2af6cc9",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/checkConsistencyInStruct.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/checkConsistencyInStruct.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\importSingleIMUFile_GUI.m",
+        "bytes": 5244,
+        "sha256": "5320f67c25dfc6ccaeff9c362e8d51f8ff3e99d3bfdb4834d75258c994782950",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/importSingleIMUFile_GUI.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/importSingleIMUFile_GUI.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\mergeIMUtoEEG.m",
+        "bytes": 2206,
+        "sha256": "2bcab940f479e702fc7d1568508b62b62f92fd5733dd59ed565e886eecfefd5a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/mergeIMUtoEEG.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/mergeIMUtoEEG.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\IMU_helper\\prepIMUsignals.m",
+        "bytes": 1507,
+        "sha256": "63ae5716e312b41ffa87b44af730a1df30aab0002feafef626d91af461aaae4f",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/IMU_helper/prepIMUsignals.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/IMU_helper/prepIMUsignals.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Import\\Chanloc_Presets\\biosemi128_chanlocs.mat",
+        "bytes": 7824,
+        "sha256": "14dbfc1fec1a596b3cc7db1965f468891c4790c53d0df57013d88b928bfb6a41",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Import/Chanloc_Presets/biosemi128_chanlocs.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Import/Chanloc_Presets/biosemi128_chanlocs.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Import\\Chanloc_Presets\\biosemi128plus8emg_chanlocs.mat",
+        "bytes": 7931,
+        "sha256": "0ad1efc2157c11dc131cb5a7870cb14867ad2b1494bdeca6ecf81887e6658f67",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Import/Chanloc_Presets/biosemi128plus8emg_chanlocs.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Import/Chanloc_Presets/biosemi128plus8emg_chanlocs.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Import\\Chanloc_Presets\\biosemi264_chanlocs.mat",
+        "bytes": 10715,
+        "sha256": "b62b83fa4445e5de414b387ef359ee867a42623bea2237b000fcf42c06c0cb9a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Import/Chanloc_Presets/biosemi264_chanlocs.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Import/Chanloc_Presets/biosemi264_chanlocs.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Import\\ImportTrial.m",
+        "bytes": 5893,
+        "sha256": "a82e9c11c4cb2b63e7d3a09e000864079125887e5e12ddb6b4c2d34bbec030a8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Import/ImportTrial.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Import/ImportTrial.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\bestParamsArray.mat",
+        "bytes": 8916,
+        "sha256": "19d668e45664d4d51e6e55809541c392f63ad5338f16cc80d9af714c88fea70a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/bestParamsArray.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/bestParamsArray.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\createUpdateParamTable.m",
+        "bytes": 13618,
+        "sha256": "83d7a2847073f01b70f7d02d2cbb1190551322e379fb33f3bf81b45307bdf4c6",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/createUpdateParamTable.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/createUpdateParamTable.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\helper_scripts\\makeCopiesOfExcelSheets.m",
+        "bytes": 671,
+        "sha256": "2e21570e5e55fc2ec806b029b853139cae096b69d0f854006730c496ec934449",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/helper_scripts/makeCopiesOfExcelSheets.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/helper_scripts/makeCopiesOfExcelSheets.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\helper_scripts\\plot_TimeScroll_PSD.m",
+        "bytes": 6662,
+        "sha256": "7119b2f1f7fce627fbc30a094b886526d203de292cc31810dbd2b9176a1d29b7",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/helper_scripts/plot_TimeScroll_PSD.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/helper_scripts/plot_TimeScroll_PSD.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\helper_scripts\\runParamTableEndlessly_func.m",
+        "bytes": 1409,
+        "sha256": "b79ea5b334191900e47f579dc2d010d6fb5e9dfb4d490d62c7da252ff07feeb5",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/helper_scripts/runParamTableEndlessly_func.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/helper_scripts/runParamTableEndlessly_func.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\loadAndPlotBestPerCondition.m",
+        "bytes": 7120,
+        "sha256": "e87c80f07bd3a7410a92c68335b6898949c898f1582e4c0e6ae77812b98554a8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/loadAndPlotBestPerCondition.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/loadAndPlotBestPerCondition.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\plotParamTable_ASR.m",
+        "bytes": 2837,
+        "sha256": "fe265997ccb0c146471ccc53883e326c0eaec17dcef5f0f5fa12c7687aa8922d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_ASR.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_ASR.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\plotParamTable_adaptiveRef.m",
+        "bytes": 3737,
+        "sha256": "a02dffd312ddd5b1f92907dd53b6196a68fee4d8d97be188e7beeefcb51bdcd7",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_adaptiveRef.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_adaptiveRef.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\plotParamTable_autoCCA.m",
+        "bytes": 3503,
+        "sha256": "a30d33c43fd28c21b0a82f06a8fddf5293412fb0f3ed08ff2d1391f8e5f5fa63",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_autoCCA.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_autoCCA.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\plotParamTable_iCanClean.m",
+        "bytes": 3912,
+        "sha256": "59c8f15c9f9e3a47e4d958707b1a525fbf94509255071497926e9dfaccbce6fe",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_iCanClean.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotParamTable_iCanClean.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\plotSummary.m",
+        "bytes": 8026,
+        "sha256": "293fffef0867b840fcce4792a21261ad3fd46074f41070ae414ae12d10f00cc2",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotSummary.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/plotSummary.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\plot_results\\powerpointTemplate.pptx",
+        "bytes": 38875,
+        "sha256": "c603ce37ba35217116ac3da058bfcdbd7a54008f4baa824d89e6cb4d076468a0",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/plot_results/powerpointTemplate.pptx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/plot_results/powerpointTemplate.pptx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\runBestCaseAndSave.m",
+        "bytes": 8017,
+        "sha256": "f5c4d3d6aca96f6f1e7f5145dd5b183976363ccdd14a3c2cf0b3e2015c80d624",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/runBestCaseAndSave.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/runBestCaseAndSave.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Param_Sweep\\runParamTable_func.m",
+        "bytes": 15105,
+        "sha256": "db10f79081fd297c32a149921fc3a51558c02d1f96706a63cd2962aefc7fff21",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Param_Sweep/runParamTable_func.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Param_Sweep/runParamTable_func.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\ASR_burst_clean.m",
+        "bytes": 2304,
+        "sha256": "9a87c3f7d44d776d46d346f4c53e126decad932b60b695f241858ab246875bdd",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/ASR_burst_clean.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/ASR_burst_clean.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\adaptiveRef.m",
+        "bytes": 3263,
+        "sha256": "11e8dba1baea7ff73d1c024a944e0ee80a449f5805300c924b4f64adf8d08b5c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/adaptiveRef.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/adaptiveRef.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\autoLagCCA.m",
+        "bytes": 1077,
+        "sha256": "4a5cef725de17b227071bc2c6146fa96b14aad179ba3a6ee9cffdb0a19a1bc1c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/autoLagCCA.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/autoLagCCA.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\calcCascadeProjection.m",
+        "bytes": 476,
+        "sha256": "1b50bef272f4d0856401c94537acc5f1f247f1af2a2e884fc1c1453b2057de8d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/calcCascadeProjection.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/calcCascadeProjection.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\calcProjection.m",
+        "bytes": 3686,
+        "sha256": "ddfdefd98caa082b34c08c76bd156ad886d8cd1f614ec438c6f840e01bb478e6",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/calcProjection.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/calcProjection.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\makeFilterBank.m",
+        "bytes": 1921,
+        "sha256": "25dfb66c3a45ec6c570eece2673fac2f10ee3837f75a686dd6965a89debe53a8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/makeFilterBank.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/makeFilterBank.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\makeVolterraExpansion.m",
+        "bytes": 2568,
+        "sha256": "27226fa54ba1704ace8e6ce64c132081c757ab165511589d56e4001fe56a2d86",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/makeVolterraExpansion.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/makeVolterraExpansion.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\reref_chooseRank.m",
+        "bytes": 886,
+        "sha256": "5ab8a972a4f25c2e051dc73a7b0bbb3fb5701d3f791c3e4b390a6799112a6253",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/reref_chooseRank.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/reref_chooseRank.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\solve_Linf_regression.m",
+        "bytes": 2085,
+        "sha256": "c46c3cfee2eed28ec2e614c4c7437a5862b5dd31b744b892cf3dc3f58639fcce",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/solve_Linf_regression.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/solve_Linf_regression.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\helper\\solve_Linf_regression_example.m",
+        "bytes": 2010,
+        "sha256": "df50684b563e248d97b03b7611a04c50e7455fff6fe8b4678e96d5bb072ea6bc",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/helper/solve_Linf_regression_example.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/helper/solve_Linf_regression_example.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Preprocessing\\volterraIMU.m",
+        "bytes": 2932,
+        "sha256": "ffcd202ef8d4feb40b4cfc710f3dd98071b3bd1c477edaea94541a9b954bf6ee",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Preprocessing/volterraIMU.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Preprocessing/volterraIMU.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Reref\\makeNeckEMG_bipolar.m",
+        "bytes": 898,
+        "sha256": "cf0e5d79f605d2ef37f0db1bd2c0dfbe957402eb800728ef72b019f0751d7935",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Reref/makeNeckEMG_bipolar.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Reref/makeNeckEMG_bipolar.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\Reref\\rerefByType.m",
+        "bytes": 1315,
+        "sha256": "674d43e247e019494752518e49084a80997fa88a3356fe91ec04d95bc29231b0",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/Reref/rerefByType.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/Reref/rerefByType.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\initializePhantomStudy.m",
+        "bytes": 104,
+        "sha256": "2ebc8d49d9cbd5eeb8c75270f1b8de13f8e795e508297e24c53e258403d59c07",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/initializePhantomStudy.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/initializePhantomStudy.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\initializePhantomStudy_func.m",
+        "bytes": 2827,
+        "sha256": "b04a8bd77272a6e8bced38c68d5c3463fdc19b96a5eca16226b3538aaf34c094",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/initializePhantomStudy_func.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/initializePhantomStudy_func.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean.zip",
+        "bytes": 2887940,
+        "sha256": "b5fe5b74e4e1f6cba7223215cf5aa8bc36f9e5b9d47b25af6963315ebe158850",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean.zip",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean.zip"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\How to Edit & Update the iCanClean Plugin.pptx",
+        "bytes": 3137398,
+        "sha256": "46bfe5ce8457014b3098c84224ea1c855bcecba848a03187cc1d4dc4e0d6c69e",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/How to Edit & Update the iCanClean Plugin.pptx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/How%20to%20Edit%20%26%20Update%20the%20iCanClean%20Plugin.pptx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\Tasks.docx",
+        "bytes": 15405,
+        "sha256": "b24670d0dab0b4fe957364b50ef2899fc3d81782d3690982825e5c70b6bcc352",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/Tasks.docx",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/Tasks.docx"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\duplicateAndFilterChans.m",
+        "bytes": 4001,
+        "sha256": "d0da17a164836a7299f54fc5c40eb609d6e5e896be38d5de1c80d16a5cafc125",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/duplicateAndFilterChans.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/duplicateAndFilterChans.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\eegplugin_iCanClean.m",
+        "bytes": 3170,
+        "sha256": "a7c0348979490b76796398bd277ed66e74e6944203a2786a155a8922bf367ab1",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/eegplugin_iCanClean.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/eegplugin_iCanClean.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean.m",
+        "bytes": 20341,
+        "sha256": "51883a07763ba3e21d1c7150d2c3fa0099df47f4e8936a454dd95079b609c235",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_3DEpochedData.m",
+        "bytes": 11544,
+        "sha256": "e4edc32b346eb0e0991ce58b1438a2ba9b728118e6664b66b03adab2dbc720d8",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_3DEpochedData.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_3DEpochedData.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_3DEpochedDataParallel.m",
+        "bytes": 8563,
+        "sha256": "20c23e8fcea8998919edfe2329bc97e85d5deff419a0c90dd36413bdfcbb5bad",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_3DEpochedDataParallel.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_3DEpochedDataParallel.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_calcSources.m",
+        "bytes": 2807,
+        "sha256": "4c494a73e60080fffc88949dc983ece0163bd8967347130beb8fa12714004a98",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_calcSources.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_calcSources.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_calcVarAccFor.m",
+        "bytes": 3281,
+        "sha256": "c2c9447036c1982da81bbd4ea09a6f70dc1112c9b80b5bb6cd83e1cea8e3883a",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_calcVarAccFor.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_calcVarAccFor.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_cleanChansWithNoiseSources.m",
+        "bytes": 3372,
+        "sha256": "fab4d6331921d6d44be05f2827e09a8e58522e69fa0f7980b515ab44d0196899",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_cleanChansWithNoiseSources.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_cleanChansWithNoiseSources.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_reref.m",
+        "bytes": 3197,
+        "sha256": "864cbe1ad95700d3db0101d5945b560a27ea3d25881a888b1264065ca868396d",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_reref.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_reref.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_setParams.m",
+        "bytes": 3961,
+        "sha256": "0253a37310799d6fd0e68a94ee1afc582f219d9431c25fd7c795bc7224d0f514",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_setParams.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_setParams.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\iCanClean_visualizeResults.m",
+        "bytes": 4727,
+        "sha256": "cdac4c555e977ce266adce020548c3d38ebc6ffdecf8689297432489365f5212",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_visualizeResults.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/iCanClean_visualizeResults.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\makeEquivICA_iCanClean.m",
+        "bytes": 3591,
+        "sha256": "9c5c85cf080aeb3427ad649971c18a1b6077621ed38a34088422950c5bff3342",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/makeEquivICA_iCanClean.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/makeEquivICA_iCanClean.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\pop_findBrainComps.m",
+        "bytes": 12540,
+        "sha256": "cb6c7f4b7498357e6dbcc0ead201e2e9554f7d7a3b15eae4cf7881936a0e6b0c",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/pop_findBrainComps.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/pop_findBrainComps.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\iCanClean\\pop_iCanClean.m",
+        "bytes": 30477,
+        "sha256": "6887e95ef5200bf7c800859382409653d3f710406cca55062f0eaac4dbab2945",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/iCanClean/pop_iCanClean.m",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/iCanClean/pop_iCanClean.m"
+      },
+      {
+        "file": "data\\raw\\ds004784\\derivatives\\Scripts\\plugins\\note.txt",
+        "bytes": 263,
+        "sha256": "a73ffe6dcff923fcf426e5b3d83228889149adf83c1ab0569b1b534a0abb4474",
+        "status": "verified",
+        "key": "ds004784/derivatives/Scripts/plugins/note.txt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/derivatives/Scripts/plugins/note.txt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\participants.json",
+        "bytes": 403,
+        "sha256": "254e798f53a1a7d05e20d578ddfc969f4bfbe190527295a2b6b1fac8ccea0ba0",
+        "status": "verified",
+        "key": "ds004784/participants.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/participants.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\participants.tsv",
+        "bytes": 56,
+        "sha256": "3dee135253b764c120e9f10ff8f604c29de4380bd84e85ca8efbae7daf2dbc54",
+        "status": "verified",
+        "key": "ds004784/participants.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/participants.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\stimuli\\GT_source_order.png",
+        "bytes": 34254,
+        "sha256": "9be2ada089f5a58ec4405ae526cb882ca58e7da2772ac99270ed419f7c96e7cc",
+        "status": "verified",
+        "key": "ds004784/stimuli/GT_source_order.png",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/stimuli/GT_source_order.png"
+      },
+      {
+        "file": "data\\raw\\ds004784\\stimuli\\GTdata_croppedToRisingEdge.mat",
+        "bytes": 22256497,
+        "sha256": "0899f604df81262c8844664b04d9e8a38a819af2b9328caff6bb8cd52c3979e4",
+        "status": "verified",
+        "key": "ds004784/stimuli/GTdata_croppedToRisingEdge.mat",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/stimuli/GTdata_croppedToRisingEdge.mat"
+      },
+      {
+        "file": "data\\raw\\ds004784\\stimuli\\readme.txt",
+        "bytes": 790,
+        "sha256": "629fd6ffe57851aeeff55832004a64e61241eb36611eaaef99d00bfb9cc3183a",
+        "status": "verified",
+        "key": "ds004784/stimuli/readme.txt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/stimuli/readme.txt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_channels.tsv",
+        "bytes": 3376,
+        "sha256": "9721750e6b847afc079a93122020313b415976d3541c5e3dcb3448dafa38019b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_channels.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_channels.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_coordsystem.json",
+        "bytes": 97,
+        "sha256": "38cbd743cd80f8243716dcfe326138c49c124855551fbed50f935724a5ee71d3",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_coordsystem.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_coordsystem.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_eeg.fdt",
+        "bytes": 168148992,
+        "sha256": "c3f8c5810edd59c9e84bb4892bd6b3a6333756636b52a67b3562fef700b9056d",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_eeg.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_eeg.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_eeg.json",
+        "bytes": 555,
+        "sha256": "7e8a6afaace4b82f93a4614de451f5811061fe7cf0702534da8eb5e7aa917560",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_eeg.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_eeg.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_eeg.set",
+        "bytes": 1466304,
+        "sha256": "40ae5c729da1ece562e7aaebe0d4e7a58a37a3977214ba925713edd691947e4a",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_eeg.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_eeg.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_electrodes.tsv",
+        "bytes": 6812,
+        "sha256": "4e16cfb69e83132c4e3c58a206dad6c72be82ecb3b2204d00d5a4e81c68bdfdd",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_electrodes.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_electrodes.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-All_events.tsv",
+        "bytes": 137,
+        "sha256": "3816f9fa86a807c60d9de5276b37d557001ca7a3eaa96dc939322d22c3ff8df5",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-All_events.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-All_events.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_channels.tsv",
+        "bytes": 3376,
+        "sha256": "9721750e6b847afc079a93122020313b415976d3541c5e3dcb3448dafa38019b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_channels.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_channels.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_coordsystem.json",
+        "bytes": 97,
+        "sha256": "38cbd743cd80f8243716dcfe326138c49c124855551fbed50f935724a5ee71d3",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_coordsystem.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_coordsystem.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_eeg.fdt",
+        "bytes": 193019904,
+        "sha256": "e890021470e75fd899c245c673c5ab8aaf9103ac98acb556edfe5a19a7110c2f",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_eeg.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_eeg.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_eeg.json",
+        "bytes": 555,
+        "sha256": "f6a09615b97f321c16a8cdff162b09818c5714b349d4f833bfa509a4e00d79a0",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_eeg.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_eeg.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_eeg.set",
+        "bytes": 1654752,
+        "sha256": "15beab3e827dc12bce39d137c6bd381ce89436bb216e60643d6768a9c0ca78bf",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_eeg.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_eeg.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_electrodes.tsv",
+        "bytes": 6812,
+        "sha256": "4e16cfb69e83132c4e3c58a206dad6c72be82ecb3b2204d00d5a4e81c68bdfdd",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_electrodes.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_electrodes.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Brain_events.tsv",
+        "bytes": 137,
+        "sha256": "8cb55d828e613596cfc4fcdb0251e49d6c43059b8fa6fb44d1b4463d4a1f7330",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Brain_events.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Brain_events.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_channels.tsv",
+        "bytes": 3376,
+        "sha256": "9721750e6b847afc079a93122020313b415976d3541c5e3dcb3448dafa38019b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_channels.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_channels.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_coordsystem.json",
+        "bytes": 97,
+        "sha256": "38cbd743cd80f8243716dcfe326138c49c124855551fbed50f935724a5ee71d3",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_coordsystem.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_coordsystem.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_eeg.fdt",
+        "bytes": 171393024,
+        "sha256": "31d82ade3da3bc7feccbc2c58c9dc177d544dadd1454232830108c8c50a2b222",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_eeg.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_eeg.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_eeg.json",
+        "bytes": 555,
+        "sha256": "c12028ccfe63ed4063c926d1f2c52d704eb88130b0c57bb3bd73551c3a1b2d97",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_eeg.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_eeg.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_eeg.set",
+        "bytes": 1490904,
+        "sha256": "add38a73a08a8ef6edcb671ecd262ba996ddaed5e1e32582c37987027d53afc0",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_eeg.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_eeg.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_electrodes.tsv",
+        "bytes": 6812,
+        "sha256": "4e16cfb69e83132c4e3c58a206dad6c72be82ecb3b2204d00d5a4e81c68bdfdd",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_electrodes.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_electrodes.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Eyes_events.tsv",
+        "bytes": 138,
+        "sha256": "8434d94695bfdf2e4fb25c7379c839eb6eecc8cf29967ca84f953503ac6b90e4",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Eyes_events.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Eyes_events.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_channels.tsv",
+        "bytes": 3376,
+        "sha256": "9721750e6b847afc079a93122020313b415976d3541c5e3dcb3448dafa38019b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_channels.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_channels.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_coordsystem.json",
+        "bytes": 97,
+        "sha256": "38cbd743cd80f8243716dcfe326138c49c124855551fbed50f935724a5ee71d3",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_coordsystem.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_coordsystem.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_eeg.fdt",
+        "bytes": 169230336,
+        "sha256": "65b014ebb44a77c5a17f2daac3e42a67d6cb830f3a1990940e75a843b4b4b403",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_eeg.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_eeg.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_eeg.json",
+        "bytes": 555,
+        "sha256": "7b245641a6f7e6e66d5d8e4411356e913e5241c0d18566cb5875625060a3f1ef",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_eeg.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_eeg.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_eeg.set",
+        "bytes": 1474520,
+        "sha256": "bcac1afb8dd4ec3bbe7a22f32ca04704d941a1d34a7f84e1f2462e5c7393f481",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_eeg.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_eeg.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_electrodes.tsv",
+        "bytes": 6812,
+        "sha256": "4e16cfb69e83132c4e3c58a206dad6c72be82ecb3b2204d00d5a4e81c68bdfdd",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_electrodes.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_electrodes.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Facial_events.tsv",
+        "bytes": 137,
+        "sha256": "211e14dbaeebdfe3149618c19bd0980cf56b5c755ec72fb5b958252bb138c800",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Facial_events.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Facial_events.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_channels.tsv",
+        "bytes": 3376,
+        "sha256": "9721750e6b847afc079a93122020313b415976d3541c5e3dcb3448dafa38019b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_channels.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_channels.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_coordsystem.json",
+        "bytes": 97,
+        "sha256": "38cbd743cd80f8243716dcfe326138c49c124855551fbed50f935724a5ee71d3",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_coordsystem.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_coordsystem.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_eeg.fdt",
+        "bytes": 173015040,
+        "sha256": "f7e90ae1ae58f4672bc5e579cfefc1409d5293b711fd79ffaeeb031754ca5ccf",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_eeg.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_eeg.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_eeg.json",
+        "bytes": 555,
+        "sha256": "3acfff6a0c6ff0d7032845e0356d1611b2c00c8a6810efe4ef16f1927edd534e",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_eeg.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_eeg.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_eeg.set",
+        "bytes": 1503192,
+        "sha256": "a29c947e7de796386846cfad2827db9c38bf84b1d18ab82d93e118cd41f721b7",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_eeg.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_eeg.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_electrodes.tsv",
+        "bytes": 6812,
+        "sha256": "4e16cfb69e83132c4e3c58a206dad6c72be82ecb3b2204d00d5a4e81c68bdfdd",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_electrodes.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_electrodes.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Neck_events.tsv",
+        "bytes": 138,
+        "sha256": "b7ab512f937dd07e7b3b7f1aafbe28182fd2637f4573a637b8523ad726dd0f70",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Neck_events.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Neck_events.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_channels.tsv",
+        "bytes": 3376,
+        "sha256": "9721750e6b847afc079a93122020313b415976d3541c5e3dcb3448dafa38019b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_channels.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_channels.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_coordsystem.json",
+        "bytes": 97,
+        "sha256": "38cbd743cd80f8243716dcfe326138c49c124855551fbed50f935724a5ee71d3",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_coordsystem.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_coordsystem.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_eeg.fdt",
+        "bytes": 177881088,
+        "sha256": "91d66b2bd89b9bd0d1a6aba63801de118ce7500ffc3ed8de2d08140a46dfc850",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_eeg.fdt",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_eeg.fdt"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_eeg.json",
+        "bytes": 555,
+        "sha256": "40b6ec4b3d8fb79bafa302a0d46f1cce79b63faf2f06b87d27934eb6acde4064",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_eeg.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_eeg.json"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_eeg.set",
+        "bytes": 1540064,
+        "sha256": "f8839da73052f2560404b12b06b44ef9e239422346acf1d5daaf719b4a89763a",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_eeg.set",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_eeg.set"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_electrodes.tsv",
+        "bytes": 6812,
+        "sha256": "4e16cfb69e83132c4e3c58a206dad6c72be82ecb3b2204d00d5a4e81c68bdfdd",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_electrodes.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_electrodes.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\sub-001\\eeg\\sub-001_task-Walking_events.tsv",
+        "bytes": 138,
+        "sha256": "9b7da52e8bf8747618e1912cc09eaae5b915c888a0a2815c59f84a112839fe7b",
+        "status": "verified",
+        "key": "ds004784/sub-001/eeg/sub-001_task-Walking_events.tsv",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/sub-001/eeg/sub-001_task-Walking_events.tsv"
+      },
+      {
+        "file": "data\\raw\\ds004784\\task-phantom_events.json",
+        "bytes": 734,
+        "sha256": "3e969613f97e451e532675a14ac7feef0d90012dc77432d27f091c11ecdf2414",
+        "status": "verified",
+        "key": "ds004784/task-phantom_events.json",
+        "url": "https://s3.amazonaws.com/openneuro.org/ds004784/task-phantom_events.json"
+      }
+    ]
+  }
+}

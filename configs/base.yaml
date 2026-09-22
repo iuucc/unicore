@@ -1,0 +1,64 @@
+# configs/base.yaml —— 全局配置基线（手册 T0.4 + §5.1 + §5.2 + §5.5）
+#
+# 继承关系：base.yaml → multichannel_base.yaml → 各实验配置（stage_*.yaml 等）。
+# 加载方式：unicore_eeg.config.load_config("base.yaml")。
+# 加载器会解析 `@paths.*` 符号引用与 `extends` 链；命令行参数优先级最高。
+#
+# 硬约束来源：手册 §5.5 的四条（torch_compile 必须 false、num_workers 不得为 0、
+# 禁止 DDP、需要更大等效 batch 时用 grad_accum_steps 而不是把 batch_size 提到 256）。
+# 这些值的实测依据见手册 §0.3.7 / §0.3.8 与 runs/_env/hardware_baseline.json。
+
+schema_version: 1
+name: base
+
+# ---------------- 信号与窗口（手册 §5.1）----------------
+signal:
+  sample_rate: 500          # 目标采样率，Hz
+  window_size: 1000         # 2.0 s
+  bandpass:
+    low: 0.5
+    high: 45.0
+    order: 4                # 4 阶 Butterworth
+    method: filtfilt        # 零相位
+  resample_method: resample_poly   # 整数比抗混叠重采样；禁止用 F.interpolate 下采样
+  car: true                 # 共平均参考
+  normalize: none           # 数据集层不归一化；模型内部 robust_normalize（model.py:455）
+  channel_policy: error     # 缺导必须报错，不得静默补零（§5.1）
+
+# ---------------- 划分（手册 §5.2）----------------
+split:
+  unit: subject             # subject | recording；拿不到受试者 ID 时按 recording
+  fractions:
+    train: 0.6
+    val: 0.2
+    test: 0.2
+  # 手册 §5.3 固定的三个随机种子（对应 P2 的三种子要求）
+  seeds: [42, 1234, 20260922]
+  leakage_check: require_zero   # T2.3 泄漏检查必须为 0，否则拒绝开训
+
+# ---------------- 运行配置（手册 §5.5）----------------
+runtime:
+  precision: bf16           # torch.autocast("cuda", dtype=torch.bfloat16)
+  grad_scaler: false        # bf16 无需损失缩放
+  torch_compile: false      # 本机无 Triton，禁止启用（§0.3.4）
+  cudnn_benchmark: true
+  matmul_precision: high    # set_float32_matmul_precision("high")
+  device: cuda              # 双卡并行时由 CUDA_VISIBLE_DEVICES 指定
+  deterministic: false      # True 会关闭 cudnn.benchmark，二者互斥
+
+# ---------------- DataLoader（手册 §0.3.7 实测 + §5.5）----------------
+dataloader:
+  batch_size: 128           # 单卡 15.92 GiB 的安全上限；256 必 OOM
+  num_workers: 8            # 禁止 0；双卡并行时两进程之和 ≤ 16
+  persistent_workers: true  # Windows 下必须
+  prefetch_factor: 4
+  pin_memory: true
+  grad_accum_steps: 1       # 需要更大等效 batch 时改这里，不是改 batch_size
+  drop_last: true
+
+# ---------------- 路径（一律走符号引用，禁止写死）----------------
+paths:
+  raw_root: "@paths.RAW_ROOT"
+  runs_root: "@paths.RUNS_ROOT"
+  config_root: "@paths.CONFIG_ROOT"
+  pool_registry: "@paths.POOL_REGISTRY"

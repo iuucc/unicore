@@ -1,0 +1,41 @@
+# configs/_paths.yaml —— 路径单一真相源的 YAML 镜像（手册 T0.1 产出）
+#
+# 权威来源是 `unicore_eeg/paths.py`。本文件只把 CODE 侧根目录写成字面量，
+# 供配置引用与人工核对；`tests/test_core.py` 的 PathSourceTests 断言两者一致，
+# 不一致即测试失败，避免出现第二个真相源。
+#
+# 外部数据池（POOL）绝对路径**故意不写在这里**：
+#   * 手册 §2.4 规则 3：POOL 路径只能出现在 `unicore_eeg/paths.py` 一处；
+#   * 手册 §5.4 / T0.1 验收：对 `unicore_eeg`、`scripts`、`tests`、`configs`
+#     做外部池路径字面量检索必须无输出（唯一豁免是 `unicore_eeg/paths.py`）
+#     —— 所以本文件（含注释）里连示例都不得出现该字面量。
+# 需要池内文件时用符号引用 `@paths.EXTERNAL_POOL/<数据集>/<子路径>`，
+# 或直接调用 `unicore_eeg.paths.pool_path(name, *parts)`。
+
+schema_version: 1
+
+# --- CODE / DATA 根目录（字面量，与 paths.py 一一对应）---
+project_root: D:/codexwork/unicore
+data_root: D:/codexwork/unicore/data
+raw_root: D:/codexwork/unicore/data/raw
+runs_root: D:/codexwork/unicore/runs
+config_root: D:/codexwork/unicore/configs
+
+# --- 外部数据池（符号引用，无字面路径）---
+external_pool: "@paths.EXTERNAL_POOL"
+pool_registry: "@paths.POOL_REGISTRY"
+
+# --- 数据集名清单，顺序与手册 §3.1 一致；实际路径由 paths.py 解析 ---
+pool_datasets:
+  - physiomotion
+  - bci2a
+  - openbmi
+  - physionet_mi
+  - chbmit
+  - sleep_edfx
+  - cap_sleep
+  - ds002094
+  - faced
+  - cho_gigadb
+  - bci2b
+  - tuar

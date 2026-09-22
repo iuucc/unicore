@@ -11,8 +11,8 @@ from torch.utils.data import Dataset
 from .model import ARTIFACT_NAMES
 
 
-ON004784_TASKS = ("Brain", "Eyes", "Facial", "Neck", "Walking", "All")
-ON004784_FAMILIES = ("clean", "ocular", "facial_myogenic", "neck_myogenic", "motion", "mixed")
+DS004784_TASKS = ("Brain", "Eyes", "Facial", "Neck", "Walking", "All")
+DS004784_FAMILIES = ("clean", "ocular", "facial_myogenic", "neck_myogenic", "motion", "mixed")
 GT_SOURCE_GROUPS = {
     "brain": tuple(range(0, 10)),
     "ocular": tuple(range(10, 12)),
@@ -28,7 +28,7 @@ def _prepare_windows_openmp() -> None:
 
 
 @dataclass(frozen=True)
-class On004784Recording:
+class Ds004784Recording:
     task: str
     eeg_set: Path
     eeg_fdt: Path
@@ -43,7 +43,7 @@ class On004784Recording:
 
 
 @dataclass(frozen=True)
-class On004784Window:
+class Ds004784Window:
     recording_index: int
     start: int
     stop: int
@@ -70,7 +70,7 @@ def task_to_labels(task: str) -> tuple[Tensor, int]:
         labels[2] = 1.0
         labels[4] = 1.0
         return labels, 5
-    raise ValueError(f"unknown on004784 task: {task}")
+    raise ValueError(f"unknown ds004784 task: {task}")
 
 
 def _eeg_channel_indices(channels_tsv: Path) -> tuple[int, ...]:
@@ -84,23 +84,23 @@ def _eeg_channel_indices(channels_tsv: Path) -> tuple[int, ...]:
     return tuple(indices or range(len(frame)))
 
 
-def discover_on004784_recordings(root: Path | str) -> list[On004784Recording]:
+def discover_ds004784_recordings(root: Path | str) -> list[Ds004784Recording]:
     _prepare_windows_openmp()
     import mne
 
     root = Path(root)
     eeg_root = root / "sub-001" / "eeg"
-    recordings: list[On004784Recording] = []
-    for task in ON004784_TASKS:
+    recordings: list[Ds004784Recording] = []
+    for task in DS004784_TASKS:
         prefix = eeg_root / f"sub-001_task-{task}"
         eeg_set = prefix.with_name(prefix.name + "_eeg.set")
         eeg_fdt = prefix.with_name(prefix.name + "_eeg.fdt")
         channels_tsv = prefix.with_name(prefix.name + "_channels.tsv")
         if not eeg_set.exists() or not eeg_fdt.exists() or not channels_tsv.exists():
-            raise FileNotFoundError(f"missing on004784 BIDS files for task={task} under {eeg_root}")
+            raise FileNotFoundError(f"missing ds004784 BIDS files for task={task} under {eeg_root}")
         raw = mne.io.read_raw_eeglab(eeg_set, preload=False, verbose="ERROR")
         labels, family = task_to_labels(task)
-        recordings.append(On004784Recording(
+        recordings.append(Ds004784Recording(
             task=task,
             eeg_set=eeg_set,
             eeg_fdt=eeg_fdt,
@@ -133,7 +133,7 @@ def load_ground_truth_summary(root: Path | str) -> dict[str, object]:
     }
 
 
-class On004784WindowDataset(Dataset):
+class Ds004784WindowDataset(Dataset):
     def __init__(
         self,
         root: Path | str,
@@ -149,10 +149,10 @@ class On004784WindowDataset(Dataset):
         self.channels = channels
         self.sample_rate = sample_rate
         self.length = length
-        selected_tasks = set(tasks or ON004784_TASKS)
-        self.recordings = [record for record in discover_on004784_recordings(self.root) if record.task in selected_tasks]
+        selected_tasks = set(tasks or DS004784_TASKS)
+        self.recordings = [record for record in discover_ds004784_recordings(self.root) if record.task in selected_tasks]
         if not self.recordings:
-            raise FileNotFoundError(f"no selected on004784 recordings found under {self.root}")
+            raise FileNotFoundError(f"no selected ds004784 recordings found under {self.root}")
         self.windows = self._index_windows(stride_seconds)
         if max_windows is not None and len(self.windows) > max_windows:
             generator = torch.Generator().manual_seed(seed)
@@ -161,17 +161,17 @@ class On004784WindowDataset(Dataset):
         self._cached_path: Path | None = None
         self._cached_raw: object | None = None
 
-    def _index_windows(self, stride_seconds: float | None) -> list[On004784Window]:
-        windows: list[On004784Window] = []
+    def _index_windows(self, stride_seconds: float | None) -> list[Ds004784Window]:
+        windows: list[Ds004784Window] = []
         for recording_index, recording in enumerate(self.recordings):
             source_length = int(round(self.length * recording.sample_rate / self.sample_rate))
             stride = int(round((stride_seconds or self.length / self.sample_rate) * recording.sample_rate))
             stride = max(stride, 1)
             max_start = max(recording.samples - source_length, 0)
             for start in range(0, max_start + 1, stride):
-                windows.append(On004784Window(recording_index, start, start + source_length))
+                windows.append(Ds004784Window(recording_index, start, start + source_length))
         if not windows:
-            raise ValueError("on004784 window index is empty")
+            raise ValueError("ds004784 window index is empty")
         return windows
 
     def __len__(self) -> int:

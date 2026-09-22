@@ -4,8 +4,19 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-runs/
 checkpoints/
+
+# 实验产物：只增不改，不入版本控制（手册 §2.2、§5.3）。
+# 例外：保留 runs/.gitkeep 以便仓库里存在该目录（手册 T0.4 步骤 3）。
+# 直接用 `runs/` 会连 .gitkeep 一起忽略，故改为 `runs/*` + 反向豁免。
+runs/*
+!runs/.gitkeep
+
+# 大型原始数据不入版本控制；数据侧的"登记与校验"文件必须入控制，
+# 否则 T0.2 的校验清单与 §5.3 的登记要求无法追溯。
 data/raw/
-data/download_manifest.json
 *.npy
+
+# 注意：data/download_manifest.json 已从忽略列表移出（手册 T0.2 要求它是
+# 可追溯的校验记录，见 §2.3「校验记录」）。它只含路径/字节数/SHA-256，
+# 不含数据本体，体积约 150 KiB，适合入版本控制。

@@ -344,20 +344,36 @@ $targets | Select-Object ProcessId,@{n='MB';e={[int]($_.WorkingSetSize/1MB)}},Co
 
 ### 3.1 主用数据集
 
-| 数据集 | 相对路径 / 文件模式 | 采样率 | 通道 | 用途（对应设计文档章节） | 完整性 |
+| 数据集 | 相对路径 / 文件模式 | 采样率（实测） | 通道（实测） | 用途（对应设计文档章节） | 完整性 |
 |---|---|---|---|---|---|
-| **physiomotion** | `physiomotion\derivatives\preprocessed_BIDS\sub-{1..30}\eeg\sub-{id}_task-artifact_run-{01..06}_eeg.edf`<br>`physiomotion\derivatives\Manual_Annotations\sub{id}_run*.csv`（180 份） | 待读 | 34 双极 | §9.1 Cross-dataset；真实眼动/肌电/运动多标签路由外测与弱监督适配 | 完整（30 受试者） |
-| **bci2a** | `bci2a\A0{1..9}{T,E}.gdf` + 同名 `.mat`（18 对） | 250 | 22 | §9.2 下游任务（运动想象）；§9.1 Clean-input | 完整 |
-| **openbmi** | `openbmi\cache\subj{01..54}_session{1,2}_mi.npz`（108 份）+ `openbmi\*.mat`（216 份） | 待读 | 62 | 下游任务（大规模 MI）、Clean-input | 完整 |
-| **physionet_mi** | `physionet_mi\four_class_cache\subj{001..109}_run{04,06,08,10,12,14}.npz` + `physionet_mi\*.edf`（654） | 160 | 64 | 4 类 MI 下游任务 | 4 类子集 |
-| **chbmit** | `chbmit\chb{01..}\chb{XX}_{NN}.edf`（39 个） | 256 | 23（变） | §9.3 生理负对照（棘波/发作形态） | **子集**（全集约 686 EDF） |
-| **sleep_edfx** | `sleep_edfx\cache20\SC4XX_night{1,2}.npz`（415 份）+ `sleep_edfx\*.edf`（306） | 100 | 2 | §9.3 负对照（K 复合波/纺锤波）；睡眠分期下游 | **子集** |
-| **cap_sleep** | `cap_sleep\*.edf` + 同名 `.txt`（各 56）+ `cap_sleep\feature_cache\*.npz`（97） | 待读 | 待读 | §9.3 负对照；睡眠下游 | **子集** |
-| **ds002094** | `ds002094\sourcedata\**`（43 组 `.vhdr/.vmrk`，107 `.tsv`，120 `.mat`） | 待读 | 待读 | §9.1 Unseen-artifact：TMS 强瞬态压力测试 | 基本完整 |
-| **faced** | `faced\feature_cache\sub-XXX.npz`（74）+ `faced\*.bdf`（55）+ `.tsv`（168） | 250 | 32 | §9.2 情感识别下游；Clean-input | **子集**（全集 123 受试者） |
-| **cho_gigadb** | `cho_gigadb\meta_cache\s{01..52}.npz`（208）+ `cho_gigadb\*.mat`（52） | 待读 | 待读 | Clean-input、MI 下游 | 52 受试者 |
-| **bci2b** | `bci2b\B{01..09}{01..05}{T,E}.gdf`（45）+ `.mat`（45） | 250 | 3 双极 | MI 下游；小通道压力测试 | 完整 |
+| **physiomotion** | `physiomotion\derivatives\preprocessed_BIDS\sub-{1..30}\eeg\sub-{id}_task-artifact_run-{01..06}_eeg.edf`<br>`physiomotion\derivatives\Manual_Annotations\sub{id}_run*.csv`（180 份） | **1000** | **34**（双极，`Fp1-F7`… 全部为 EEG 类型） | §9.1 Cross-dataset；真实眼动/肌电/运动多标签路由外测与弱监督适配 | 完整（30 受试者） |
+| **bci2a** | `bci2a\A0{1..9}{T,E}.gdf` + 同名 `.mat`（18 对） | 250 | **25** = 22 EEG + 3 EOG（`EEG-Fz`…、`EEG-0..2` 为 EOG） | §9.2 下游任务（运动想象）；§9.1 Clean-input | 完整 |
+| **openbmi** | `openbmi\cache\subj{01..54}_session{1,2}_mi.npz`（108 份）+ `openbmi\raw\session{1,2}\s{n}\sess*_EEG_{MI,Artifact}.mat`（216 份） | 原始 **1000**（`fs`）；缓存 npz 250 | 原始 **62**（`chan` 为 `Fp1`…、`x` 形状 `(T, 62)`）；缓存 npz 仅 **20** 导 | 下游任务（大规模 MI）、Clean-input | 完整 |
+| **physionet_mi** | `physionet_mi\four_class_cache\subj{001..109}_run{04,06,08,10,12,14}.npz` + `physionet_mi\*.edf`（654） | 160 | EDF **64**；缓存 npz **21** 导（`FC5`…`CP6`） | 4 类 MI 下游任务 | 4 类子集 |
+| **chbmit** | `chbmit\chb{01..24}\chb{XX}_{NN}.edf`（39 个） | 256 | 23 | §9.3 生理负对照（棘波/发作形态） | **子集**（全集约 686 EDF） |
+| **sleep_edfx** | `sleep_edfx\cache20\SC4XX_night{1,2}.npz`（415 份）+ `sleep_edfx\*.edf`（306） | 100 | EDF **7 路信号** = 2 EEG（`EEG Fpz-Cz`、`EEG Pz-Oz`）+ EOG + Resp + EMG + Temp + Event | §9.3 负对照（K 复合波/纺锤波）；睡眠分期下游 | **子集** |
+| **cap_sleep** | `cap_sleep\*.edf` + 同名 `.txt`（各 56）+ `cap_sleep\feature_cache\*.npz`（97） | **256 或 512（整库不统一）** | **18 或 22（整库不统一）**；缓存 npz 8 导 @128 | §9.3 负对照；睡眠下游 | **子集** |
+| **ds002094** | `ds002094\sourcedata\**`（43 组 `.vhdr/.vmrk`，107 `.tsv`，120 `.mat`） | **5000** | **30** | §9.1 Unseen-artifact：TMS 强瞬态压力测试 | 基本完整 |
+| **faced** | `faced\feature_cache\sub-XXX.npz`（74）+ `faced\nm000112\**\*.bdf`（55）+ `.tsv`（168） | 250 | 32 | §9.2 情感识别下游；Clean-input | **子集**（全集 123 受试者） |
+| **cho_gigadb** | `cho_gigadb\meta_cache\s{01..52}.npz`（208）+ `cho_gigadb\*.mat`（52） | 原始 **512**（`eeg.srate`）；缓存 npz 256 | 原始 **64**（`eeg.senloc` 形状 `(64, 3)`）；缓存 npz **21** 导 | Clean-input、MI 下游 | 52 受试者 |
+| **bci2b** | `bci2b\B{01..09}{01..05}{T,E}.gdf`（45）+ `.mat`（45） | 250 | **6** = 3 EEG（`EEG:C3/Cz/C4`）+ 3 EOG（`EOG:ch01..03`） | MI 下游；小通道压力测试 | 完整 |
 | **tuar** | — | — | — | **不可用，空目录** | 空 |
+
+> **实测口径（2026-09-22）**
+> 采样率/通道数由 `scripts/probe_pool.py` 实测：`mne` 读每个数据集**前 3 条**原始记录（`raw_uniform` 字段标明整库是否一致），
+> `npz` 用 `np.load(mmap_mode="r").files` dump schema，`mat` 用 `scipy.io.loadmat(simplify_cells=True)`。
+> 完整 JSON 见 `runs/_pool_probe/pool_probe.json`（该次探测已验证 `pool_untouched_all = true`，池内零改动）。
+>
+> 三条必须记住的实测结论（与 v1.1 初稿的假设不同）：
+> 1. **PhysioMotion 是 1000 Hz，不是 500 Hz。** 低通截止 150 Hz。`unicore_eeg/physiomotion.py`
+>    目前用 `F.interpolate` 线性插值到 500 Hz，**不抗混叠**；T2.6 必须改为 `scipy.signal.resample_poly`。
+> 2. **CAP Sleep 整库不统一**：`brux1.edf` 512 Hz/18 导、`brux2.edf` 256 Hz/18 导、`ins8.edf` 512 Hz/22 导。
+>    任何涉及它的结论都必须写明具体记录号，且不能假设统一采样率。
+> 3. **缓存与原始的通道数不同**：openbmi 缓存 20 导 / 原始 62 导；cho_gigadb 缓存 21 导 / 原始 64 导；
+>    physionet_mi 缓存 21 导 / EDF 64 导。使用缓存前必须按 §3.2 纪律 2 先 dump schema。
+>
+> 另注：`sleep_edfx` 的 `*-Hypnogram.edf` 只含标注、不含信号通道，`mne` 读取会报
+> `picks yielded no channels`——这是预期行为，已记入 probe 的 `notes` 而非 `errors`。
 
 ### 3.2 使用 POOL 的三条纪律
 
@@ -1575,3 +1591,16 @@ wait
 |---|---|---|---|
 | 2026-09-22 | — | 手册初版（v1.0） | — |
 | 2026-09-22 | 第 0.3 节 | v1.0 的环境章节过于简略，且已知 GPU 信息有误（实为**两块** RTX 5080，非一块） | 升为 v1.1：重写 0.3 节为实测环境章节（硬件/软件/能力约束/双卡策略/DataLoader/显存预算/自检）；新增 **T0.7 环境加固与性能基线**；新增 **§5.5 运行配置**；更新 Gate 0、附录 A/B、产物清单、风险表 |
+| 2026-09-22 | 执行前澄清 | 执行 AI 提出 12 项待澄清问题，用户逐条确认 | ①逐 Gate 停靠确认 ②阶段 3 起按 §0.3.8 全量执行（T0.5 等有固定规模的任务不放大）③配置化采用"必须支持 `--config`、命令行优先级最高" ④`git init` + 基线提交 ⑤T0.5 用 batch 64 ⑥手册可就地编辑并在此登记 ⑦POOL 路径按"根常量 + 登记子路径" ⑧ds004784 的 128 导坐标取 `electrodes.tsv`、19 导按最近邻映射 ⑨T2.5 验收量取"逐通道对 10 路脑源最大 Rsq 的通道均值" ⑩ds004784 划分按 T2.5 推荐方案预注册 ⑪阶段脚本统一为 `train_stage_{a,b,c,d}.py` + `configs/stage_{a,b,c,d}.yaml` ⑫`to_batch` 额外带出 `condition` |
+| 2026-09-22 | §0.3.3、§0.3.5 | 依赖清单**漏了 pytest**，但 Gate 0 与 T0.2 验收都要求 `python -m pytest tests/` | T0.7 步骤 1 的补装清单扩为 `pyyaml psutil pytest`；`requirements.txt` / `pyproject.toml` / `environment.yml` 三处同步 |
+| 2026-09-22 | §5.4 | "脚本只接受 `--config`"与"T0.5 复现命令保持原样"不可兼得 | 改为"所有脚本必须支持 `--config`；命令行显式参数优先级最高；原有 CLI 标志保留"（用户决策 ③）。新增 `unicore_eeg/config.py` 承载 `extends` 继承、`@paths.*` 符号解析与覆盖合并 |
+| 2026-09-22 | T0.5 与附录 A | T0.5 步骤 1 用 `--batch-size 64`，附录 A 用 `128`；历史 run `runs/full_experiment_v2_fixed` 的实测设置为 **64**（见该目录 `问题修正与全量重跑总结.md` 第三节） | 按 **64** 复现；附录 A 的 `128` 登记为笔误 |
+| 2026-09-22 | T0.1 | 验收 grep 会命中 `scripts/evaluate_physiomotion.py:19` 里写死的池路径 | 改为 `paths.pool_path("physiomotion")`；同时清理了两处陈旧 `.pyc`（含旧路径的字节码） |
+| 2026-09-22 | T0.1 / T0.4 | 若在 `configs/_paths.yaml` 写池路径，会破坏 T0.1 自己的验收 grep | `_paths.yaml` 只镜像 CODE 侧根目录；池一律用 `@paths.EXTERNAL_POOL` 符号引用；单测 `ConfigTests::test_base_config_loads_and_resolves_symbols` 与 `PathSourceTests` 双向守卫 |
+| 2026-09-22 | T0.2 | 验收要求 `grep -rn -i "on004784" …` 无输出，但步骤 3 又要求复用 `scripts/download_on004784.py::list_objects` | 该脚本一并改名为 `scripts/download_ds004784.py`，全部标识符随之改名；并新增 `--verify` 子模式，不下载即可生成含 `sha256` 的清单 |
+| 2026-09-22 | §3.1 / 登记表 | `data/local_sources.json` 未登记 `tuar`；`faced` 的登记路径是受试者子目录 `nm000112`，与 §3.1"路径均相对 POOL 根"的口径冲突 | 补登 `tuar`（`role=["declared_unavailable","empty_directory"]`）；`paths.py` 显式区分 `POOL[name]`（数据集根，§3.1 基准）与 `POOL_DECLARED[name]`（登记路径），避免 `pool_path("faced","feature_cache")` 拼到错误层级 |
+| 2026-09-22 | T0.4 / `.gitignore` | `.gitignore` 的 `runs/` 会让 T0.4 要求的 `runs/.gitkeep` 失效 | 改为 `runs/*` + `!runs/.gitkeep`；另把 `data/download_manifest.json`（§2.3 的"校验记录"）移出忽略列表——校验记录必须可追溯 |
+| 2026-09-22 | §3.1 | 原表（承自 `进度评估与行动建议` §3.2）称 PhysioMotion 为 500 Hz，**实测为 1000 Hz**（低通 150 Hz） | §3.1 已按实测回填并加"实测口径"注；`unicore_eeg/physiomotion.py` 现用 `F.interpolate` 线性插值下采样，**不抗混叠**，T2.6 必须改为 `scipy.signal.resample_poly` |
+| 2026-09-22 | §3.1 | 实测发现三处与预期不符：cap_sleep 整库采样率/通道数不统一（512/18、256/18、512/22）；openbmi 缓存 20 导而原始 62 导；cho_gigadb 缓存 21 导而原始 64 导 | 已按实测回填 §3.1 并加注；§3.2 纪律 2（先 dump schema 再使用缓存）从"建议"升级为硬要求 |
+| 2026-09-22 | T0.3 | `sleep_edfx` 的 `*-Hypnogram.edf` 只含标注、不含信号通道，`mne` 读取报 `picks yielded no channels` | probe 将其记入 `notes` 而非 `errors`；§3.1 加注说明这是预期行为 |
+| 2026-09-22 | 阶段 1 预告 | ds004784 的 128 个 EEG 通道名是 `A1`…`A128`（BioSemi ActiveTwo 布局），**不是** 10-20 标准名；`sub-001_task-*_electrodes.tsv` 提供 x/y/z（mm）坐标 | 经用户确认（决策 ⑧）：128 导坐标取 `electrodes.tsv` 并归一化到头部半径 1；`ds004784_19ch.yaml` 按三维坐标与标准 19 导做最近邻匹配，映射表落盘 |

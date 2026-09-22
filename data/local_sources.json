@@ -41,6 +41,12 @@
   },
   "faced": {
     "path": "D:/codexwork/eeg/data/faced/nm000112",
-    "role": ["clean_preservation", "affective_downstream"]
+    "role": ["clean_preservation", "affective_downstream"],
+    "note": "path 指向实际使用的受试者子目录；数据集 POOL 根为 D:/codexwork/eeg/data/faced（含 feature_cache/、official_de_cache/）。取同名子目录请用 unicore_eeg.paths.pool_path('faced', ...)。"
+  },
+  "tuar": {
+    "path": "D:/codexwork/eeg/data/tuar",
+    "role": ["declared_unavailable", "empty_directory"],
+    "note": "空目录，未接入。T0.3 探测必须记录为 empty，任何报告不得表述为已接入 TUAR。"
   }
 }

@@ -1,10 +1,10 @@
-# on004784 数据接入 Sanity Check
+# ds004784 数据接入 Sanity Check
 
 ## 数据审计
 
-- 根目录：`D:\codexwork\unicore\data\raw\on004784`
+- 根目录：`D:\codexwork\unicore\data\raw\ds004784`
 - 任务条件：Brain, Eyes, Facial, Neck, Walking, All
-- Ground truth 文件：`data\raw\on004784\stimuli\GTdata_croppedToRisingEdge.mat`
+- Ground truth 文件：`D:\codexwork\unicore\data\raw\ds004784\stimuli\GTdata_croppedToRisingEdge.mat`
 - Ground truth 形状：`(153600, 21)`，来源通道组：`{'brain': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 'ocular': [10, 11], 'neck_myogenic': [12, 13, 14, 15], 'facial_myogenic': [16, 17, 18, 19], 'trigger': [20]}`
 
 ## BIDS 记录

@@ -9,23 +9,23 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import torch
 
-from unicore_eeg import ARTIFACT_NAMES
-from unicore_eeg.on004784 import (
-    ON004784_FAMILIES,
-    ON004784_TASKS,
-    On004784WindowDataset,
-    discover_on004784_recordings,
+from unicore_eeg import ARTIFACT_NAMES, paths
+from unicore_eeg.ds004784 import (
+    DS004784_FAMILIES,
+    DS004784_TASKS,
+    Ds004784WindowDataset,
+    discover_ds004784_recordings,
     load_ground_truth_summary,
 )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Audit and sanity-check OpenNeuro/NEMAR on004784.")
-    parser.add_argument("--root", type=Path, default=Path("data/raw/on004784"))
+    parser = argparse.ArgumentParser(description="Audit and sanity-check OpenNeuro/NEMAR ds004784.")
+    parser.add_argument("--root", type=Path, default=paths.RAW_ROOT / "ds004784")
     parser.add_argument("--channels", type=int, default=1)
     parser.add_argument("--length", type=int, default=1000)
     parser.add_argument("--sample-rate", type=int, default=500)
-    parser.add_argument("--out", type=Path, default=Path("data/on004784_sanity_report.md"))
+    parser.add_argument("--out", type=Path, default=paths.DATA_ROOT / "ds004784_sanity_report.md")
     return parser.parse_args()
 
 
@@ -36,9 +36,9 @@ def format_labels(labels: torch.Tensor) -> str:
 
 def main() -> None:
     args = parse_args()
-    recordings = discover_on004784_recordings(args.root)
+    recordings = discover_ds004784_recordings(args.root)
     ground_truth = load_ground_truth_summary(args.root)
-    dataset = On004784WindowDataset(
+    dataset = Ds004784WindowDataset(
         args.root,
         channels=args.channels,
         length=args.length,
@@ -52,12 +52,12 @@ def main() -> None:
         first_by_task.setdefault(task, index)
 
     lines = [
-        "# on004784 数据接入 Sanity Check",
+        "# ds004784 数据接入 Sanity Check",
         "",
         "## 数据审计",
         "",
         f"- 根目录：`{args.root.resolve()}`",
-        f"- 任务条件：{', '.join(ON004784_TASKS)}",
+        f"- 任务条件：{', '.join(DS004784_TASKS)}",
         f"- Ground truth 文件：`{ground_truth['path']}`",
         f"- Ground truth 形状：`{ground_truth['shape']}`，来源通道组：`{ground_truth['source_groups']}`",
         "",
@@ -69,7 +69,7 @@ def main() -> None:
     for recording in recordings:
         labels = torch.tensor(recording.labels)
         lines.append(
-            f"| {recording.task} | {ON004784_FAMILIES[recording.family]} | {format_labels(labels)} | "
+            f"| {recording.task} | {DS004784_FAMILIES[recording.family]} | {format_labels(labels)} | "
             f"{recording.sample_rate:.1f} | {recording.channels} | {len(recording.eeg_channel_indices)} | "
             f"{recording.samples} | {recording.duration:.1f} |"
         )
@@ -84,7 +84,7 @@ def main() -> None:
         "| task | shape | finite | mean | std | labels |",
         "|---|---|---:|---:|---:|---|",
     ])
-    for task in ON004784_TASKS:
+    for task in DS004784_TASKS:
         sample = dataset[first_by_task[task]]
         eeg = sample["eeg"]
         assert isinstance(eeg, torch.Tensor)

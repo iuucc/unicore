@@ -10,13 +10,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig
+from unicore_eeg.paths import pool_path
 from unicore_eeg.physiomotion import PHYSIOMOTION_FAMILIES, PhysioMotionWindowDataset
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate routing on real PhysioMotion annotations.")
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--root", type=Path, default=Path("D:/codexwork/eeg/data/physiomotion"))
+    parser.add_argument("--root", type=Path, default=pool_path("physiomotion"))
     parser.add_argument("--subjects", nargs="+", type=int, default=list(range(1, 31)))
     parser.add_argument("--max-windows", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=32)

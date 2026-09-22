@@ -1,0 +1,34 @@
+# configs/multichannel_base.yaml —— 多通道实验配置基线（手册 T0.4 + T1.1）
+#
+# 用途：作为所有"原生多通道"实验的父配置。相对 base.yaml 只增加 `montage` 段，
+# 以及多通道专属的模型开关（T1.3 的 spatial 段）。
+#
+# 决策 D1 的核心约定（手册 §1）：
+#   * 每个实验**必须**声明一个 montage，实验内 C 固定；
+#   * 跨数据集比较时，报告中必须显式列出各自的 C 与通道列表；
+#   * 不得把 2 导（Sleep-EDF）与 128 导（ds004784）统一到同一个 C 上。
+
+extends: base.yaml
+
+name: multichannel_base
+
+montage:
+  # 指向 configs/montages/<name>.yaml；由该文件给出通道列表、坐标与是否双极。
+  name: null                # 例：bci2a / ds004784 / ds004784_19ch / physiomotion
+  file: null                # 例：montages/bci2a.yaml（相对 configs/）
+  # 显式覆盖通道列表；null 表示直接使用 montage 文件的全部通道。
+  channels: null
+  # 通道数由 montage 解析结果决定，这里只是断言位；解析结果与之不符即报错。
+  expect_channels: null
+
+# 多通道下的模型开关（手册 §6.4 T1.3）
+spatial:
+  use_spatial: true             # false 时等价于未加空间投影模块
+  pca_rank: 4                   # SVD 取前 4 个右奇异向量
+  modulation_alpha_scale: 1.0   # 空间权重只调制 ocular_drift 与 cardiac 两个观测
+
+# 合成器真混音（手册 §6.5 T1.4）；仅合成实验使用
+mixer:
+  enabled: true
+  propagation_delay_ms: 8.0     # τ ~ U(-8ms, +8ms)
+  record_mixing_matrix: true    # 样本字典带出 mixing_matrix 供空间指标评价
