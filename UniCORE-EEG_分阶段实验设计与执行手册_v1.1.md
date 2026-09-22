@@ -126,6 +126,11 @@ export PATH="/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Users/admin/.workbu
 
 #### 0.3.6 双 RTX 5080 的正确用法
 
+> **⚠️ 2026-09-22 用户指令：本节的双卡并行方案已停用。** 统一改为**单卡（GPU 0）串行**执行。
+> 本节的实测依据（无 NCCL、两卡异根端口）仍然成立，**"禁止 DDP / 跨卡梯度同步"这一条继续有效**；
+> 被停用的只是"两个进程各占一张卡并行跑"这种调度方式。`scripts/run_dual_gpu.py` 保留在仓库中，
+> 按 `--gpus 0` 当串行调度器使用。下面的策略 A/B 与命令块仅作历史记录，**不要在正式实验中照抄**。
+
 **策略 A —— 首选：双卡各跑一个独立实验（官方推荐路线）**
 
 两块卡分别执行两个互不通信的进程，各自绑定一张卡：
@@ -211,6 +216,37 @@ dataloader:
    `OpenBLAS error: Memory allocation still failed after 10 retries`。
    → 每次异常中断后，必须检查并清理残留 python 进程（见 0.3.9 的自检脚本）。
 
+> **2026-09-22 T0.7 实测修正（每组合 2048 样本，取代上面的 384 样本短测）**
+>
+> 上面的短测只跑了 384 个样本（3 个 batch），且只测了 **C=34**。T0.7 用
+> `scripts/bench_hardware.py` 重测，并补上**主线口径 C=1**（完整数据见
+> `runs/_env/hardware_baseline.json`）：
+>
+> | `num_workers` | C=1 稳态 samples/s | C=34 稳态 samples/s |
+> |---:|---:|---:|
+> | 0 | **924.95** | **383.53** |
+> | 4 | 6964.1 | 2389.97 |
+> | 8 | 16356.2 | 3091.68 |
+> | 12 | 19173.6 | 3208.36 |
+>
+> **一条必须更正的结论。** 本节原先写："单通道情形更糟（GPU 477 samples/s vs 加载 310 samples/s，
+> GPU 约 35% 时间闲置）"。这是把 **C=34 的加载速率（310）**当成了单通道的加载速率，再与
+> **C=1 的 GPU 速率（477）**相比——两个数字是不同口径，推论不成立。
+> 实测 C=1 的加载速率是 **925 samples/s**，而 C=1 在 bs=64 下的 GPU 速率只有 **274 samples/s**
+> （见 `runs/_env/hardware_baseline.json` 的 GPU 段）。也就是说：
+> **单通道下加载能力本来就是 GPU 的 3.4 倍，不存在"GPU 被数据加载饿死"。**
+>
+> 结论修正为：`num_workers > 0` 真正消除的是**多通道（C ≥ 34）时的加载瓶颈**；
+> 对 C=1 它只提供余量，不带来吞吐收益，还会引入 Windows spawn 的固定启动成本（实测约 40 s）。
+> `num_workers=8` 仍作为全局默认保留——阶段 1 起主线就是多通道（决策 D1）。
+>
+> 另：短测中 `num_workers=12 → 4412` 明显高于 `=4 → 2399`，长测里变成 `12 → 3208` 与 `4 → 2390`，
+> 12 个 worker 的相对收益远没有短测显示的那么大。
+>
+> 还有一条与本节不同的观测：**未复现"每个 DataLoader worker 常驻约 1.4 GB"**。
+> C=34 下剩余物理内存几乎不动（14.03 → 14.57 GiB），因为 `SyntheticEEGDataset` 用 mmap 读 npy，
+> 共享页不计入独占内存。双卡场景已按用户指令取消，该约束目前不构成限制。
+
 ---
 
 #### 0.3.8 显存预算与推荐 batch size（实测）
@@ -238,7 +274,29 @@ dataloader:
 - 评估集从 6000 提到 **30000+**（评估不反传，显存占用远小于训练）。
 - 训练样本从 65536 提到 **200000+**（合成数据可无限生成，瓶颈是时间不是显存）。
 - 打开 `persistent_workers` + `prefetch_factor=4`，让显存和算力都不空转。
-- 三种子实验用双卡并行（0.3.6 策略 A）而非单卡串行。
+- 三种子实验：**按用户 2026-09-22 指令改为单卡串行**（原为双卡并行，见 §0.3.6 的变更说明）。
+
+> **2026-09-22 T0.7 实测修正（每组合 2016–2048 样本，取代上面的短测）**
+>
+> 上面表格来自 8 step 的短测。`scripts/bench_hardware.py` 的完整测量
+> （`runs/_env/hardware_baseline.json`，bf16，forward+backward+optimizer 一步）：
+>
+> | C | bs=32：samples/s ／ ms·step⁻¹ | bs=64 | bs=128 | peak@bs=128 |
+> |---:|---|---|---|---:|
+> | 1 | 146.6 ／ 218.23 | 274.3 ／ 233.34 | **445.9 ／ 287.07** | 7.63 GiB |
+> | 8 | 145.0 ／ 220.67 | 278.3 ／ 229.95 | 416.4 ／ 307.40 | 7.75 GiB |
+> | 34 | 145.0 ／ 220.76 | 272.1 ／ 235.25 | 393.7 ／ 325.11 | 8.70 GiB |
+> | 64 | 328.4 ／ 97.45 | 394.6 ／ 162.17 | 382.8 ／ 334.37 | 10.28 GiB |
+> | 128 | 266.5 ／ 120.07 | 291.8 ／ 219.32 | **OOM** | — |
+>
+> **实测确认了本节的预警**：`C=128 且 bs=128` **确实 OOM**（已分配 12.92 GiB、保留 1.78 GiB
+> 后仍要再申请 376 MiB，单卡 15.92 GiB 放不下）。C=128 下 `bs=64` 可用，peak 6.92 GiB。
+> → **阶段 1 之后任何 128 导（ds004784）实验，batch size 上限是 64；要更大等效 batch 只能用
+> `grad_accum_steps`。**
+>
+> 另一条值得注意：`bs=64→128` 在 C≥8 时**反而变慢**（C=34: 235→325 ms/step）。原因是激活内存
+> 受限，大 batch 触发更多显存回收；而 `bs=32→64` 的加速很稳定（C≤34 时约 1.9×）。
+> 因此多通道下 `bs=64` 是吞吐拐点，`128` 只对 C=1 明显有利。
 
 ---
 
@@ -467,6 +525,12 @@ dataloader:
 ```
 
 **四条硬性约束**
+
+> **2026-09-22 用户指令取代第 3 条中的双卡用法**：统一用**一张卡（GPU 0）串行**执行，
+> 不再使用双卡并行。上面 yaml 里的 `device: cuda` 按此理解，实际值见
+> `configs/base.yaml` 的 `runtime.visible_devices: "0"`。**禁止 DDP / 跨卡梯度同步这一条不变。**
+> `scripts/run_dual_gpu.py` 保留在仓库中，但按 `--gpus 0` 当串行调度器使用（提供逐任务日志、
+> GPU 利用率采样与子 worker 回收）。
 
 1. `torch_compile` 必须为 `false`（本机 Triton 缺失）。
 2. `num_workers` 不得为 0；双卡并行时两进程的 `num_workers` **之和不得超过 16**。
@@ -1534,7 +1598,7 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.used,utilization.gpu --for
 # ---- 多通道冒烟 ----
 "$PY" scripts/smoke_multichannel.py --channels 1 3 8 34 64 128
 
-# ---- 双卡并行跑三种子（0.3.6 策略 A；总 worker ≤ 16）----
+# ---- 双卡并行跑三种子（0.3.6 策略 A；⚠️ 已按用户 2026-09-22 指令停用，仅作历史记录）----
 CUDA_VISIBLE_DEVICES=0 "$PY" scripts/train_stage_b.py --config configs/stage_b.yaml \
   --seed 42 --num-workers 8 --out runs/stage_b_seed42 &
 CUDA_VISIBLE_DEVICES=1 "$PY" scripts/train_stage_b.py --config configs/stage_b.yaml \
@@ -1570,12 +1634,31 @@ wait
 - 缺失：`PyYAML`、`psutil`、`Triton`（→ T0.7 补前两个，第三个不用）。
 - **bf16 = 支持；NCCL = 不支持；Triton = 缺失。**
 
-**性能实测（短测，用于定方向；定参数须按 T0.7 重测）**
+**性能实测（2026-09-22 T0.7 完整测量，每组合 ≥2000 样本；权威数据见 `runs/_env/hardware_baseline.json`）**
 - 模型参数量 15.37 M（C=1）／15.57 M（C=34）。
-- 单卡 bf16：`bs=128` 是安全上限（C=1 时 7.63 GiB／477 samples/s；C=34 时 8.56 GiB／402 samples/s）；**`bs=256` 必 OOM**。
-- DataLoader：`num_workers=0` → 310 samples/s（**成为瓶颈**）；`=4` → 2399；`=8` → 2275；`=12` → 4412。
-- 每 worker 常驻约 1.4 GB → **双卡并行时总 worker ≤ 16**。
-- Windows 多进程：入口必须 `if __name__ == "__main__":`；父进程被强杀后子 worker 不退出（实测泄漏 16 进程 ≈ 16.5 GB，会引发 `OpenBLAS memory allocation failed`）。
+- 单卡 bf16：**`bs=128` 对 C≤64 是上限**（C=1 时 peak 7.63 GiB／445.9 samples/s）；
+  **`C=128 且 bs=128` 实测 OOM** → 128 导实验的 batch 上限是 **64**；**`bs=256` 全部必 OOM**。
+- 多通道下 `bs=32→64` 约 1.9× 加速，而 `bs=64→128` 在 C≥8 时**反而变慢**（C=34: 235→325 ms/step）。
+- DataLoader 稳态 samples/s：
+  - **C=1**：`num_workers=0` → **924.95**；4 → 6964；8 → 16356；12 → 19174。
+  - **C=34**：`num_workers=0` → **383.53**；4 → 2390；8 → 3092；12 → 3208。
+  - → **C=1 的加载能力本来就是 GPU（bs=64 时 274 samples/s）的 3.4 倍，单通道下不存在加载瓶颈**；
+    `num_workers>0` 消除的是多通道的瓶颈。
+- **未复现"每 worker 常驻约 1.4 GB"**：C=34 下剩余物理内存几乎不动（14.03 → 14.57 GiB），
+  因为 `SyntheticEEGDataset` 用 mmap 读 npy，共享页不计入独占内存。
+- Windows 多进程：入口必须 `if __name__ == "__main__":`；父进程被强杀后子 worker 不退出
+  （实测泄漏 16 进程 ≈ 16.5 GB，会引发 `OpenBLAS memory allocation failed`）。
+- **Windows spawn 的固定启动成本约 40 s**（8 worker，每个都要重新 import torch）——
+  短评估任务用 `num_workers=0` 反而更快。
+- **不要在训练脚本顶层 import pandas / sklearn**：spawn 出的 worker 会重新导入主模块，
+  连带 `scipy.stats → scipy.interpolate`，其 docstring 处理偶发抛
+  `SystemError: error return without exception set`（`scipy/_lib/_docscrape.py:477`），
+  导致 worker 启动即崩溃。实测已踩过（T0.7）。
+
+**执行约定（2026-09-22 用户指令）**
+- **统一单卡（GPU 0）串行执行**，不再使用双卡并行（取代 §0.3.6）。
+  三种子实验改为串行，**种子数不减少**。
+- `scripts/run_dual_gpu.py` 保留，按 `--gpus 0` 当串行调度器用。
 
 **模型与数据**
 - 设计文档 §14 的 50 项清单经逐行核验**完全准确**，可直接当台账。
@@ -1609,3 +1692,8 @@ wait
 | 2026-09-22 | T0.7 / §5.5 | §5.5 的四条硬约束此前只写在文档里，没有代码强制 | 新增 `unicore_eeg/runtime.py`：`configure_runtime()` 请求 `torch.compile` 而本机无 Triton 时**直接抛 `TritonMissingError`**（不静默降级）；`dataloader_kwargs()` 现场拦截 `batch_size > 128` 与负 `num_workers`，并只在 `num_workers > 0` 时传 `persistent_workers`/`prefetch_factor` |
 | 2026-09-22 | T0.7 | 实测缺陷：Windows 下 DataLoader 用 spawn 起 worker，每个 worker 会重新导入主模块（作为 `__mp_main__`）；`first_experiment.py` 顶层的 `import sklearn` 会连带 `scipy.stats → scipy.interpolate`，其文档字符串处理偶发抛 `SystemError: error return without exception set`（`scipy/_lib/_docscrape.py:477`），导致 worker 启动即崩溃并被反复重建 | 把 `pandas` 与 `sklearn` 的导入**下沉到用到它们的函数内部**，使 worker 不再拖入该链条。复测 worker 崩溃次数由 1 降为 0。已在文件头写明原因，防止后续被"整理 import"时改回顶层 |
 | 2026-09-22 | T0.7 | `evaluate_physiomotion.py` 的 `num_workers` 保持默认 `0`，与 §5.5 建议值不一致 | 该脚本是短评估（默认 2000 窗口）。实测 Windows spawn 起 8 个 worker 的固定启动成本约 40 s（每 worker 重导入 torch），在 2000 窗口量级上大于并行加载省下的时间。已加 `--num-workers` 使其可配，并在代码里写明取舍理由；窗口数上万时应调高 |
+| 2026-09-22 | §0.3.6 / T0.7 步骤 5 | **用户指令：统一用一张卡跑**，不再使用双卡并行。这取代 §0.3.6「T3.7 的三种子训练**必须**用双卡并行」以及 T0.7 步骤 5 验收项「`run_dual_gpu.py` 能同时跑两个短实验，`nvidia-smi` 显示两卡均有占用」 | 全线改为**单卡（GPU 0）串行**。`scripts/run_dual_gpu.py` 保留在仓库中，但按 `--gpus 0` 作为**串行调度器**使用（仍提供逐任务日志、GPU 利用率采样与子 worker 回收）；不再执行双卡连通性验证。T3.7 的三种子改为单卡串行执行，**种子数不减少**（仍满足 §11 风险表「不得以减少种子数来完成 T3.7」）。Gate 0 第 7 项中的双卡部分按用户授权记为豁免。§0.3.6 / §5.5 / 附录 A / 附录 B 已就地加停用注 |
+| 2026-09-22 | §0.3.7 | **原结论站不住**：本节写"单通道情形更糟（GPU 477 samples/s vs 加载 310 samples/s，GPU 约 35% 时间闲置）"，但 310 是 **C=34** 的加载速率、477 是 **C=1** 的 GPU 速率，两个数不同口径，不可比 | T0.7 实测（每组合 2048 样本）：C=1 的加载速率是 **924.95 samples/s**（`num_workers=0`），而 C=1 在 bs=64 的 GPU 速率只有 274 samples/s——**单通道下加载能力本就是 GPU 的 3.4 倍，不存在 GPU 被饿死**。§0.3.7 已整段更正，结论改为"`num_workers>0` 消除的是多通道（C≥34）的加载瓶颈"。另修正短测中 `num_workers=12 → 4412` 的乐观值（长测 3208） |
+| 2026-09-22 | §0.3.7 | 本节称"每个 DataLoader worker 常驻约 1.4 GB"，并据此定下"双卡并行总 worker ≤ 16" | T0.7 未复现：C=34 下剩余物理内存几乎不动（14.03 → 14.57 GiB）。原因是 `SyntheticEEGDataset` 用 mmap 读 npy，共享页不计入独占内存。该上限目前不构成限制（且双卡已停用），但已在 §0.3.7 注明口径差异 |
+| 2026-09-22 | §0.3.8 | 本节预警"若 128 通道下 bs=128 OOM，退到 bs=64"——T0.7 实测**确实 OOM**（已分配 12.92 GiB、保留 1.78 GiB 后仍要再申请 376 MiB） | §0.3.8 补入完整实测网格。**定为硬规则：128 导实验 batch 上限 64，需要更大等效 batch 只能用 `grad_accum_steps`。** 另记录一条反直觉事实：多通道下 `bs=64→128` **反而变慢**（C=34: 235→325 ms/step），`bs=64` 是吞吐拐点 |
+| 2026-09-22 | 附录 B | 附录 B 的"性能实测"仍是短测值，且缺 C=1 口径 | 已替换为 T0.7 的 ≥2000 样本实测值，并补入"Windows spawn 固定启动成本约 40 s""禁止在训练脚本顶层 import pandas/sklearn（spawn worker 会崩）""统一单卡执行"三条执行约定 |

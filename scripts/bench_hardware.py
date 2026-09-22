@@ -41,6 +41,8 @@ from unicore_eeg.model import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig, count_
 DEFAULT_CHANNELS = (1, 8, 34, 64, 128)
 DEFAULT_BATCHES = (32, 64, 128)
 DEFAULT_WORKERS = (0, 4, 8, 12)
+#: DataLoader 段落要覆盖的通道数。1 = 当前主线；34 = 手册 §0.3.7 短测的口径，便于对照。
+DEFAULT_DATALOADER_CHANNELS = (1, 34)
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,6 +51,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--channels", type=int, nargs="+", default=list(DEFAULT_CHANNELS))
     parser.add_argument("--batches", type=int, nargs="+", default=list(DEFAULT_BATCHES))
     parser.add_argument("--workers", type=int, nargs="+", default=list(DEFAULT_WORKERS))
+    parser.add_argument(
+        "--dataloader-channels",
+        type=int,
+        nargs="+",
+        default=list(DEFAULT_DATALOADER_CHANNELS),
+        help="DataLoader 段落要覆盖的通道数；必须含 1（主线单通道）与 34（可与 §0.3.7 短测对照）",
+    )
     parser.add_argument("--min-samples", type=int, default=2000, help="每组合至少测量多少个样本")
     parser.add_argument("--warmup-steps", type=int, default=2)
     parser.add_argument("--sample-rate", type=int, default=500)
@@ -347,27 +356,36 @@ def measure_dataloader_combo(
 
 
 def measure_dataloader(args: argparse.Namespace) -> dict[str, Any]:
-    channels = 34 if 34 in args.channels else args.channels[0]
+    """DataLoader 吞吐。
+
+    **必须覆盖 C=1**：手册 §0.3.7 的既有短测是在 C=34 上做的，但当前主线实验是单通道
+    （C=1），而合成数据集的单样本成本随通道数变化，两者的加载能力不可互相代言。
+    T0.7 的验收（单通道回归的墙钟下降）依赖 C=1 的数字。
+    """
     batch_size = 128 if 128 in args.batches else args.batches[-1]
-    results = []
-    for num_workers in args.workers:
-        print(f"[dataloader] num_workers={num_workers:<3d} ...", end="", flush=True)
-        record = measure_dataloader_combo(num_workers, channels, batch_size, args)
-        results.append(record)
-        if record["status"] == "ok":
-            print(
-                f" end2end={record['end_to_end_samples_per_s']:>8.1f}  "
-                f"steady={str(record['steady_samples_per_s']):>8s} samples/s  "
-                f"avail={record['memory_after'].get('available_gib', 'n/a')} GiB"
-            )
-        else:
-            print(f" {record['status']}: {record.get('error', '')}")
+    by_channels: list[dict[str, Any]] = []
+    for channels in args.dataloader_channels:
+        combos = []
+        for num_workers in args.workers:
+            print(f"[dataloader] C={channels:<4d} num_workers={num_workers:<3d} ...", end="", flush=True)
+            record = measure_dataloader_combo(num_workers, channels, batch_size, args)
+            combos.append(record)
+            if record["status"] == "ok":
+                print(
+                    f" end2end={record['end_to_end_samples_per_s']:>8.1f}  "
+                    f"steady={str(record['steady_samples_per_s']):>8s} samples/s  "
+                    f"avail={record['memory_after'].get('available_gib', 'n/a')} GiB  "
+                    f"children={len(record['leftover_children'])}"
+                )
+            else:
+                print(f" {record['status']}: {record.get('error', '')}")
+        by_channels.append({"channels": channels, "combos": combos})
     return {
-        "channels": channels,
+        "channels_measured": list(args.dataloader_channels),
         "batch_size": batch_size,
         "min_samples_per_combo": args.min_samples,
         "use_public_sources": args.use_public_sources,
-        "combos": results,
+        "groups": by_channels,
     }
 
 

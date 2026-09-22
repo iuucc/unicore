@@ -43,13 +43,17 @@ runtime:
   torch_compile: false      # 本机无 Triton，禁止启用（§0.3.4）
   cudnn_benchmark: true
   matmul_precision: high    # set_float32_matmul_precision("high")
-  device: cuda              # 双卡并行时由 CUDA_VISIBLE_DEVICES 指定
+  # 单卡约定（用户 2026-09-22 指令，取代 §0.3.6 的双卡并行要求）：
+  # 所有实验统一使用 GPU 0 串行执行。run_dual_gpu.py 保留但按 `--gpus 0` 当串行调度器用。
+  # 仍然禁止 DDP / 跨卡梯度同步（本机无 NCCL，两块卡还位于不同 PCIe 根端口）。
+  device: cuda
+  visible_devices: "0"
   deterministic: false      # True 会关闭 cudnn.benchmark，二者互斥
 
 # ---------------- DataLoader（手册 §0.3.7 实测 + §5.5）----------------
 dataloader:
-  batch_size: 128           # 单卡 15.92 GiB 的安全上限；256 必 OOM
-  num_workers: 8            # 禁止 0；双卡并行时两进程之和 ≤ 16
+  batch_size: 128           # C<=64 的安全上限；C=128 时 bs=128 实测 OOM，退到 64
+  num_workers: 8            # 禁止 0。单卡下也保留 8：多通道（C>=34）时加载仍是瓶颈
   persistent_workers: true  # Windows 下必须
   prefetch_factor: 4
   pin_memory: true
