@@ -14,18 +14,27 @@ import torch
 import yaml
 
 from unicore_eeg import paths
+from unicore_eeg import runtime as runtime_module
 from unicore_eeg.config import (
     apply_overrides,
     deep_merge,
     explicit_overrides,
     get,
     load_config,
+    resolve_settings,
     set_dotted,
     to_jsonable,
 )
 from unicore_eeg.ds004784 import task_to_labels
+from unicore_eeg.manifest import code_version_hash, git_state, write_run_manifest
 from unicore_eeg.model import ARTIFACT_NAMES, SparseRouter, UniCOREEGConfig
 from unicore_eeg.physiomotion import map_annotation
+from unicore_eeg.runtime import (
+    TritonMissingError,
+    check_ddp_allowed,
+    configure_runtime,
+    dataloader_kwargs,
+)
 from unicore_eeg.synthetic import SyntheticEEGDataset
 
 
@@ -280,6 +289,143 @@ class ProbeHelperTests(unittest.TestCase):
             (cache / "skip.pyc").write_bytes(b"x")
             names = sorted(item.name for item in self.probe.walk_files(root))
             self.assertEqual(names, ["keep.txt"])
+
+
+class ResolveSettingsTests(unittest.TestCase):
+    """T0.7：命令行 > 配置文件 > 代码默认值。"""
+
+    def test_cli_beats_config_beats_defaults(self) -> None:
+        defaults = {"batch_size": 24, "num_workers": 8, "epochs": 4, "out": Path("x")}
+        mapping = {"batch_size": "dataloader.batch_size", "num_workers": "dataloader.num_workers"}
+
+        # 没有 --config：全部用代码默认值
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--config", type=Path, default=None)
+        parser.add_argument("--batch-size", type=int, default=argparse.SUPPRESS)
+        settings, config = resolve_settings(parser.parse_args([]), defaults, None, mapping)
+        self.assertEqual(settings["batch_size"], 24)
+        self.assertIsNone(config)
+
+        # 有 --config：配置覆盖默认值（base.yaml 的 batch_size=128、num_workers=8）
+        settings, config = resolve_settings(
+            parser.parse_args([]), defaults, "base.yaml", mapping
+        )
+        self.assertEqual(settings["batch_size"], 128)
+        self.assertIsNotNone(config)
+        # 配置里没有的项保持默认值
+        self.assertEqual(settings["epochs"], 4)
+
+        # 命令行显式给出：优先级最高
+        settings, _ = resolve_settings(
+            parser.parse_args(["--batch-size", "32"]), defaults, "base.yaml", mapping
+        )
+        self.assertEqual(settings["batch_size"], 32)
+
+    def test_suppress_keeps_unset_flags_out_of_namespace(self) -> None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--flag", action="store_true", default=argparse.SUPPRESS)
+        self.assertNotIn("flag", vars(parser.parse_args([])))
+        self.assertTrue(parser.parse_args(["--flag"]).flag)
+
+
+class RuntimeTests(unittest.TestCase):
+    """T0.7 / §5.5：运行配置的硬约束必须是可执行检查。"""
+
+    def test_dataloader_kwargs_adds_persistent_workers_only_when_needed(self) -> None:
+        device = torch.device("cpu")
+        zero = dataloader_kwargs(64, 0, device)
+        self.assertNotIn("persistent_workers", zero)
+        self.assertNotIn("prefetch_factor", zero)
+        many = dataloader_kwargs(64, 8, device)
+        self.assertTrue(many["persistent_workers"])
+        self.assertEqual(many["prefetch_factor"], 4)
+
+    def test_dataloader_kwargs_rejects_batch_above_safe_limit(self) -> None:
+        with self.assertRaises(ValueError):
+            dataloader_kwargs(runtime_module.MAX_BATCH_SIZE + 1, 8, torch.device("cpu"))
+        with self.assertRaises(ValueError):
+            dataloader_kwargs(128, -1, torch.device("cpu"))
+
+    def test_configure_runtime_defaults(self) -> None:
+        settings = configure_runtime(None, device=torch.device("cpu"))
+        self.assertEqual(settings["precision"], "bf16")
+        self.assertFalse(settings["grad_scaler"])
+        self.assertFalse(settings["torch_compile"])
+
+    def test_configure_runtime_rejects_compile_without_triton(self) -> None:
+        try:
+            import triton  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            self.skipTest("triton is installed on this machine")
+        with self.assertRaises(TritonMissingError):
+            configure_runtime({"runtime": {"torch_compile": True}})
+
+    def test_configure_runtime_reads_base_yaml(self) -> None:
+        base = load_config("base.yaml")
+        settings = configure_runtime(base, device=torch.device("cpu"))
+        # base.yaml 里 torch_compile 必须是 false（§5.5 硬约束）
+        self.assertFalse(settings["torch_compile"])
+        self.assertEqual(settings["matmul_precision"], "high")
+
+    def test_check_ddp_allowed_always_rejects(self) -> None:
+        with self.assertRaises(RuntimeError):
+            check_ddp_allowed(2, True)
+        check_ddp_allowed(2, False)
+
+
+class ManifestTests(unittest.TestCase):
+    """T0.7 / §5.3：run 目录登记。"""
+
+    def test_code_version_hash_is_stable(self) -> None:
+        first = code_version_hash()
+        second = code_version_hash()
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 64)
+        int(first, 16)  # 必须是合法十六进制
+
+    def test_write_run_manifest_creates_manifest_and_config_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = load_config("base.yaml")
+            target = Path(directory) / "run"
+            path = write_run_manifest(
+                target,
+                command=["python", "scripts/first_experiment.py"],
+                settings={"seed": 42, "out": target},
+                config=config,
+                dataset={"name": "synthetic", "channels": 1, "sample_rate": 500},
+                extra={"route_modes": ["oracle", "learned", "all"]},
+            )
+            self.assertTrue(path.exists())
+            self.assertTrue((target / "config.yaml").exists())
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            for key in (
+                "git",
+                "code_version_hash",
+                "command",
+                "settings",
+                "config",
+                "config_file",
+                "dataset",
+                "extra",
+                "written_utc",
+            ):
+                self.assertIn(key, payload)
+            self.assertEqual(payload["dataset"]["sample_rate"], 500)
+            # Path 必须转成字符串才能序列化
+            self.assertIsInstance(payload["settings"]["out"], str)
+
+    def test_write_run_manifest_refuses_pool_target(self) -> None:
+        with self.assertRaises(PermissionError):
+            write_run_manifest(paths.EXTERNAL_POOL / "should_not_exist")
+
+    def test_git_state_reports_head(self) -> None:
+        state = git_state()
+        if not state["available"]:
+            self.skipTest(f"not a git repository: {state.get('detail')}")
+        self.assertEqual(len(state["head"]), 40)
+        self.assertIn("dirty", state)
 
 
 if __name__ == "__main__":

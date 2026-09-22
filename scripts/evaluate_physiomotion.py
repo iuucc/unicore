@@ -21,6 +21,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--subjects", nargs="+", type=int, default=list(range(1, 31)))
     parser.add_argument("--max-windows", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=32)
+    # 默认 0 而非 §5.5 建议的 8：这是短评估（默认 2000 窗口）。
+    # 实测 Windows spawn 起 8 个 worker 的固定启动成本约 40 s（每个 worker 都要重新 import torch），
+    # 在 2000 窗口量级上大于并行加载省下的时间。窗口数上万时再调高。
+    parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--out", type=Path, default=Path("runs/first_experiment/physiomotion"))
     return parser.parse_args()
 
@@ -43,7 +47,16 @@ def main() -> None:
         length=config.window_size,
         max_windows=args.max_windows,
     )
-    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0, pin_memory=device.type == "cuda")
+    loader_kwargs: dict[str, object] = {
+        "batch_size": args.batch_size,
+        "shuffle": False,
+        "num_workers": args.num_workers,
+        "pin_memory": device.type == "cuda",
+    }
+    if args.num_workers > 0:
+        loader_kwargs["persistent_workers"] = True
+        loader_kwargs["prefetch_factor"] = 4
+    loader = DataLoader(dataset, **loader_kwargs)
     labels, probabilities, routes, families, bypasses = [], [], [], [], []
     for batch in tqdm(loader, desc="PhysioMotion"):
         eeg = batch["eeg"].to(device)

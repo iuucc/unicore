@@ -152,7 +152,10 @@ def measure_gpu_combo(
         record["params"] = count_parameters(model)
 
         def build_batch() -> dict[str, torch.Tensor]:
-            generator = torch.Generator().manual_seed(args.seed)
+            # 生成器必须与张量同设备：CPU 生成器配 device="cuda" 会抛
+            # RuntimeError: Expected a 'cuda' device type for generator but found 'cpu'。
+            # 用 CUDA 生成器而不是"CPU 生成后搬运"，否则 H2D 拷贝会计入单步耗时。
+            generator = torch.Generator(device=device).manual_seed(args.seed)
             expert_count = len(ARTIFACT_NAMES)
             noisy = torch.randn(batch_size, channels, args.window_size, generator=generator, device=device)
             clean = torch.randn(batch_size, channels, args.window_size, generator=generator, device=device)

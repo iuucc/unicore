@@ -42,6 +42,7 @@ __all__ = [
     "set_dotted",
     "apply_overrides",
     "explicit_overrides",
+    "resolve_settings",
     "to_jsonable",
     "save_config",
 ]
@@ -177,6 +178,33 @@ def explicit_overrides(namespace: argparse.Namespace) -> dict[str, Any]:
     未给出的选项不会出现在命名空间里，因此这里返回的就是需要覆盖配置的项。
     """
     return {key: value for key, value in vars(namespace).items() if value is not None}
+
+
+def resolve_settings(
+    namespace: argparse.Namespace,
+    defaults: Mapping[str, Any],
+    config_path: str | Path | None = None,
+    mapping: Mapping[str, str] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """按"命令行 > 配置文件 > 代码内默认值"的优先级合成生效设置。
+
+    ``mapping`` 把 argparse 的 ``dest`` 映射到配置的点分路径，例如
+    ``{"batch_size": "dataloader.batch_size"}``。配置里取不到（或为 ``None``）的项
+    保持 ``defaults`` 的值。
+
+    返回 ``(settings, config)``；``config`` 为 ``None`` 表示本次未使用 ``--config``。
+    """
+    config = load_config(config_path) if config_path is not None else None
+    settings: dict[str, Any] = dict(defaults)
+    if config is not None and mapping:
+        for dest, dotted in mapping.items():
+            if dest not in settings:
+                continue
+            value = get(config, dotted)
+            if value is not None:
+                settings[dest] = value
+    settings.update(explicit_overrides(namespace))
+    return settings, config
 
 
 def to_jsonable(value: Any) -> Any:

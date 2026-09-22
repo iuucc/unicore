@@ -3,19 +3,29 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
-import pandas as pd
 import torch
-from sklearn.metrics import f1_score, roc_auc_score
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig
+from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig, paths
+from unicore_eeg.config import resolve_settings
 from unicore_eeg.losses import UniCORELoss
+from unicore_eeg.manifest import write_run_manifest
 from unicore_eeg.model import count_parameters
+from unicore_eeg.runtime import configure_runtime, dataloader_kwargs
 from unicore_eeg.synthetic import SyntheticEEGDataset
+
+# 注意：**不要**在模块顶层 import pandas / sklearn。
+# Windows 的 DataLoader 用 spawn 起 worker，每个 worker 会重新导入本模块（作为 __mp_main__），
+# 顶层的 sklearn → scipy.stats/interpolate 导入链偶发抛
+# `SystemError: error return without exception set`（scipy._lib._docscrape 处理文档字符串时），
+# 会让 worker 启动即崩溃并被反复重建。pandas / sklearn 只有主进程的打分与报表环节需要，
+# 因此下沉到用到它们的函数内部。
 
 
 CONDITION_NAMES = (
@@ -29,24 +39,61 @@ CONDITION_NAMES = (
 )
 ROUTE_MODES = ("oracle", "learned", "all")
 
+#: 代码内默认值（优先级最低）。与改造前的 argparse 默认值一致，
+#: 唯一的例外是 num_workers：T0.7 按手册 §0.3.7 由 0 改为 8。
+DEFAULTS: dict[str, Any] = {
+    "epochs": 4,
+    "train_samples": 4096,
+    "eval_samples": 1200,
+    "batch_size": 24,
+    "channels": 1,
+    "length": 1000,
+    "sample_rate": 500,
+    "lr": 1e-4,
+    "num_workers": 8,
+    "seed": 42,
+    "use_public_sources": False,
+    "data_root": paths.RAW_ROOT,
+    "checkpoint": None,
+    "out": paths.RUNS_ROOT / "first_experiment",
+}
 
-def parse_args() -> argparse.Namespace:
+#: argparse dest → 配置点分路径。配置文件里取不到的项回落到 DEFAULTS。
+CONFIG_MAP = {
+    "sample_rate": "signal.sample_rate",
+    "length": "signal.window_size",
+    "batch_size": "dataloader.batch_size",
+    "num_workers": "dataloader.num_workers",
+}
+
+
+def parse_args() -> tuple[argparse.Namespace, dict[str, Any] | None]:
+    """解析命令行，并按"命令行 > --config > 代码默认值"合成生效设置。
+
+    所有可由配置提供的选项都用 ``default=argparse.SUPPRESS``：未显式给出时
+    不出现在命名空间里，因此 ``resolve_settings`` 能准确区分"用户没传"与
+    "用户传了默认值"。这样既满足手册 §5.4 的配置化要求，又不改变原有 CLI 的语义
+    （T0.5 的复现命令原样可跑）。
+    """
     parser = argparse.ArgumentParser(description="Run the registered UniCORE-EEG first experiment.")
-    parser.add_argument("--epochs", type=int, default=4)
-    parser.add_argument("--train-samples", type=int, default=4096)
-    parser.add_argument("--eval-samples", type=int, default=1200)
-    parser.add_argument("--batch-size", type=int, default=24)
-    parser.add_argument("--channels", type=int, default=1)
-    parser.add_argument("--length", type=int, default=1000)
-    parser.add_argument("--sample-rate", type=int, default=500)
-    parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--use-public-sources", action="store_true")
-    parser.add_argument("--data-root", type=Path, default=Path("data/raw"))
-    parser.add_argument("--checkpoint", type=Path)
-    parser.add_argument("--out", type=Path, default=Path("runs/first_experiment"))
-    return parser.parse_args()
+    parser.add_argument("--config", type=Path, help="实验配置（YAML）；命令行显式参数优先级更高")
+    parser.add_argument("--epochs", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--train-samples", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--eval-samples", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--batch-size", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--channels", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--length", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--sample-rate", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--lr", type=float, default=argparse.SUPPRESS)
+    parser.add_argument("--num-workers", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--seed", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--use-public-sources", action="store_true", default=argparse.SUPPRESS)
+    parser.add_argument("--data-root", type=Path, default=argparse.SUPPRESS)
+    parser.add_argument("--checkpoint", type=Path, default=argparse.SUPPRESS)
+    parser.add_argument("--out", type=Path, default=argparse.SUPPRESS)
+    parsed = parser.parse_args()
+    settings, config = resolve_settings(parsed, DEFAULTS, parsed.config, CONFIG_MAP)
+    return argparse.Namespace(**settings), config
 
 
 def move_batch(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
@@ -112,7 +159,11 @@ def train_model(model: UniCOREEG, loader: DataLoader, args: argparse.Namespace, 
                 if skipped_steps > 16:
                     raise RuntimeError("too many non-finite training steps")
                 continue
-            scaler.scale(loss).backward()
+            # T0.7（手册 §0.3.6 策略 B）：必须用 .sum()。在 torch.nn.DataParallel 下损失会被
+            # 跨卡聚合成"长度 = 卡数"的向量，直接 backward() 会报
+            # RuntimeError: grad can be implicitly created only for scalar outputs。
+            # 单卡时它是 0 维张量，.sum() 是等价操作，不改变任何数值。
+            scaler.scale(loss).sum().backward()
             scaler.unscale_(optimizer)
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 (parameter for parameter in model.parameters() if parameter.requires_grad),
@@ -149,6 +200,10 @@ def _sample_correlation(pred: torch.Tensor, target: torch.Tensor) -> torch.Tenso
 
 @torch.no_grad()
 def evaluate(model: UniCOREEG, loader: DataLoader, device: torch.device) -> tuple[pd.DataFrame, dict[str, object]]:
+    # 函数内导入：避免 spawn 出来的 DataLoader worker 也把 sklearn/scipy.stats 拖进来（见文件头说明）。
+    import pandas as pd
+    from sklearn.metrics import f1_score, roc_auc_score
+
     model.eval()
     rows: list[dict[str, object]] = []
     routing = {mode: torch.zeros(len(CONDITION_NAMES), len(ARTIFACT_NAMES), device=device) for mode in ROUTE_MODES}
@@ -233,6 +288,9 @@ def evaluate(model: UniCOREEG, loader: DataLoader, device: torch.device) -> tupl
 
 
 def write_report(frame: pd.DataFrame, diagnostics: dict[str, object], out: Path) -> None:
+    # 同 evaluate()：函数内导入，保持主模块顶层轻量。
+    import pandas as pd
+
     frame.to_csv(out / "sample_metrics.csv", index=False)
     summary = frame.groupby(["route_mode", "condition"], sort=False).agg(
         rrmse=("rrmse", "mean"),
@@ -263,19 +321,42 @@ def write_report(frame: pd.DataFrame, diagnostics: dict[str, object], out: Path)
 
 
 def main() -> None:
-    args = parse_args()
+    args, run_config = parse_args()
+    args.out = Path(args.out)
+    args.data_root = Path(args.data_root)
     args.out.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.backends.cudnn.benchmark = True
-    torch.set_float32_matmul_precision("high")
+    runtime = configure_runtime(run_config, device=device)
 
-    config = UniCOREEGConfig(in_channels=args.channels, sample_rate=args.sample_rate, window_size=args.length)
+    # 手册 §5.3：run 目录必须含 run_manifest.json（含 git 状态、代码版本哈希、
+    # 配置副本、数据集规模、采样率与通道列表）。写在训练之前，崩溃也不丢登记。
+    write_run_manifest(
+        args.out,
+        command=sys.argv,
+        settings=vars(args),
+        config=run_config,
+        dataset={
+            "name": "synthetic",
+            "train_samples": args.train_samples,
+            "eval_samples": args.eval_samples,
+            "eval_mode": "first_experiment",
+            "channels": args.channels,
+            "channel_list": None,
+            "window_size": args.length,
+            "sample_rate": args.sample_rate,
+            "use_public_sources": args.use_public_sources,
+            "data_root": str(args.data_root),
+        },
+        extra={"route_modes": list(ROUTE_MODES), "condition_names": list(CONDITION_NAMES)},
+    )
+
+    model_config = UniCOREEGConfig(in_channels=args.channels, sample_rate=args.sample_rate, window_size=args.length)
     if args.checkpoint:
         checkpoint = torch.load(args.checkpoint, map_location=device)
-        config = UniCOREEGConfig(**checkpoint["config"])
-    model = UniCOREEG(config).to(device)
+        model_config = UniCOREEGConfig(**checkpoint["config"])
+    model = UniCOREEG(model_config).to(device)
     if args.checkpoint:
         model.load_state_dict(checkpoint["model"])
     train_set = SyntheticEEGDataset(
@@ -299,9 +380,13 @@ def main() -> None:
         data_root=args.data_root,
         split="test",
     )
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=device.type == "cuda")
-    eval_loader = DataLoader(eval_set, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=device.type == "cuda")
-    print(f"device={device} params={count_parameters(model):,}")
+    loader_kwargs = dataloader_kwargs(args.batch_size, args.num_workers, device)
+    train_loader = DataLoader(train_set, shuffle=True, **loader_kwargs)
+    eval_loader = DataLoader(eval_set, shuffle=False, **loader_kwargs)
+    print(
+        f"device={device} params={count_parameters(model):,} num_workers={args.num_workers} "
+        f"precision={runtime['precision']} torch_compile={runtime['torch_compile']}"
+    )
     if not args.checkpoint:
         train_model(model, train_loader, args, device)
     frame, diagnostics = evaluate(model, eval_loader, device)
