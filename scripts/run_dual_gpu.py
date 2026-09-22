@@ -93,13 +93,15 @@ class GpuSampler(threading.Thread):
         self.gpus = list(gpus)
         self.interval = max(interval, 0.5)
         self.samples: list[dict[str, Any]] = []
-        self._stop = threading.Event()
+        # 注意：不要把这个事件命名为 _stop —— threading.Thread 内部就有 _stop 方法，
+        # 覆盖它会让 Thread.join() 抛 TypeError: 'Event' object is not callable。
+        self._halt = threading.Event()
         self.available = shutil.which("nvidia-smi") is not None
 
     def run(self) -> None:
         if not self.available:
             return
-        while not self._stop.is_set():
+        while not self._halt.is_set():
             try:
                 result = subprocess.run(
                     [
@@ -126,10 +128,10 @@ class GpuSampler(threading.Thread):
                     )
             except (OSError, subprocess.SubprocessError, ValueError):
                 pass
-            self._stop.wait(self.interval)
+            self._halt.wait(self.interval)
 
     def stop(self) -> None:
-        self._stop.set()
+        self._halt.set()
         self.join(timeout=self.interval + 2.0)
 
     def summarize(self, gpu: str, start: float, end: float) -> dict[str, Any]:

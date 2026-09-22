@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -56,6 +57,8 @@ DEFAULTS: dict[str, Any] = {
     "data_root": paths.RAW_ROOT,
     "checkpoint": None,
     "out": paths.RUNS_ROOT / "first_experiment",
+    "montage": None,
+    "montage_channels": None,
 }
 
 #: argparse dest → 配置点分路径。配置文件里取不到的项回落到 DEFAULTS。
@@ -64,6 +67,8 @@ CONFIG_MAP = {
     "length": "signal.window_size",
     "batch_size": "dataloader.batch_size",
     "num_workers": "dataloader.num_workers",
+    "montage": "montage.name",
+    "montage_channels": "montage.channels",
 }
 
 
@@ -90,9 +95,18 @@ def parse_args() -> tuple[argparse.Namespace, dict[str, Any] | None]:
     parser.add_argument("--use-public-sources", action="store_true", default=argparse.SUPPRESS)
     parser.add_argument("--data-root", type=Path, default=argparse.SUPPRESS)
     parser.add_argument("--checkpoint", type=Path, default=argparse.SUPPRESS)
+    parser.add_argument("--montage", type=str, default=argparse.SUPPRESS,
+                        help="configs/montages/<name>.yaml；给出时通道数与坐标由它决定")
+    parser.add_argument("--montage-channels", nargs="+", default=argparse.SUPPRESS,
+                        help="从 montage 的参考表里选一个子集（如 C=8 的合成训练）")
     parser.add_argument("--out", type=Path, default=argparse.SUPPRESS)
     parsed = parser.parse_args()
+    explicit = set(vars(parsed))
     settings, config = resolve_settings(parsed, DEFAULTS, parsed.config, CONFIG_MAP)
+    # 给了 --montage 却没显式给 --channels 时，通道数应当由 montage 决定，
+    # 而不是落到 DEFAULTS 的 1。用 None 作哨兵，由 main() 填真实值。
+    if settings.get("montage") and "channels" not in explicit:
+        settings["channels"] = None
     return argparse.Namespace(**settings), config
 
 
@@ -122,7 +136,26 @@ def stage_for_epoch(epoch: int, epochs: int) -> str:
     return "joint"
 
 
-def train_model(model: UniCOREEG, loader: DataLoader, args: argparse.Namespace, device: torch.device) -> None:
+def spatial_kwargs(batch: dict[str, Tensor], spatial: dict[str, Any] | None) -> dict[str, Any]:
+    """把空间坐标交给模型——**仅当显式启用时**。
+
+    不传 ``--montage`` 时返回空字典，于是模型走"无坐标"分支（``has_coords`` 全 0），
+    行为与 T0.5 / T1.2 / T1.4 三次回归完全一致，那三次的指标对照因此仍然有效。
+    默认传坐标会让 ``SpatialProjectionHead`` 的 α 在训练中真的改变输出，
+    从而把 C=1 的既有结果悄悄改写。
+    """
+    if spatial is None:
+        return {}
+    return {"coords": batch.get("coords"), "coords_mask": spatial.get("mask")}
+
+
+def train_model(
+    model: UniCOREEG,
+    loader: DataLoader,
+    args: argparse.Namespace,
+    device: torch.device,
+    spatial: dict[str, Any] | None = None,
+) -> None:
     loss_fn = UniCORELoss()
     scaler = torch.amp.GradScaler("cuda", enabled=False)
     current_stage = ""
@@ -149,6 +182,7 @@ def train_model(model: UniCOREEG, loader: DataLoader, args: argparse.Namespace, 
                 outputs = model(
                     batch["noisy"],
                     metadata=batch["metadata"],
+                    **spatial_kwargs(batch, spatial),
                     disabled_experts=batch["disabled_experts"],
                     enable_residual=stage != "decomposition",
                 )
@@ -199,7 +233,12 @@ def _sample_correlation(pred: torch.Tensor, target: torch.Tensor) -> torch.Tenso
 
 
 @torch.no_grad()
-def evaluate(model: UniCOREEG, loader: DataLoader, device: torch.device) -> tuple[pd.DataFrame, dict[str, object]]:
+def evaluate(
+    model: UniCOREEG,
+    loader: DataLoader,
+    device: torch.device,
+    spatial: dict[str, Any] | None = None,
+) -> tuple[pd.DataFrame, dict[str, object]]:
     # 函数内导入：避免 spawn 出来的 DataLoader worker 也把 sklearn/scipy.stats 拖进来（见文件头说明）。
     import pandas as pd
     from sklearn.metrics import f1_score, roc_auc_score
@@ -217,6 +256,7 @@ def evaluate(model: UniCOREEG, loader: DataLoader, device: torch.device) -> tupl
                 outputs = model(
                     batch["noisy"],
                     metadata=batch["metadata"],
+                    **spatial_kwargs(batch, spatial),
                     route_mode=mode,
                     oracle_labels=batch["labels"] if mode == "oracle" else None,
                     disabled_experts=batch["disabled_experts"],
@@ -330,6 +370,56 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     runtime = configure_runtime(run_config, device=device)
 
+    # 通道数与坐标：给了 --montage 就以 montage 为准（T1.5 步骤 3 的 C=8 训练走这条路）。
+    # 没有 montage 时沿用旧行为（channels 由命令行给、不让模型看到坐标）。
+    coords: Tensor | None = None
+    spatial: dict[str, Any] | None = None
+    channel_list: list[str] | None = None
+    montage_info: dict[str, Any] | None = None
+    if args.montage:
+        from unicore_eeg.montage import MontageError, load_montage, resolve_channels
+
+        try:
+            spec = load_montage(args.montage)
+        except MontageError as error:
+            raise SystemExit(f"无法加载 montage {args.montage!r}: {error}") from error
+
+        subset = list(args.montage_channels or ())
+        if subset:
+            details, subset_coords, subset_mask = resolve_channels(subset, spec)
+            unresolved = [item.raw for item in details if item.coord is None]
+            if unresolved:
+                raise SystemExit(
+                    f"--montage-channels 里有 {len(unresolved)} 个通道在 "
+                    f"{args.montage!r} 中解析不出坐标：{unresolved}"
+                )
+            coords, mask, channel_list = subset_coords, subset_mask, subset
+        else:
+            coords, mask, channel_list = spec.coords, spec.mask, list(spec.channels)
+        coords = coords.float()
+        channel_count = len(channel_list)
+        if args.channels is not None and int(args.channels) != channel_count:
+            raise SystemExit(
+                f"--channels {args.channels} 与 montage {args.montage!r} 解析出的 "
+                f"{channel_count} 个通道不一致。要按 montage 走就别传 --channels。"
+            )
+        args.channels = channel_count  # 后续 manifest / model / dataset 统一用它
+        # 只有存在未解析通道时才需要显式 mask；否则交给模型默认的全 1，少传一个张量。
+        spatial = {"mask": None if bool(mask.all()) else mask}
+        montage_info = {
+            "name": spec.name,
+            "resolve": spec.resolve,
+            "bipolar": spec.bipolar,
+            "channel_count": channel_count,
+            "subset": bool(subset),
+            "channels": channel_list,
+            "unresolved": [ch for ch, ok in zip(channel_list, mask.tolist()) if not ok],
+        }
+        print(
+            f"montage={spec.name} channels={channel_count} resolve={spec.resolve} "
+            f"bipolar={spec.bipolar} 子集={bool(subset)} 未解析={len(montage_info['unresolved'])}"
+        )
+
     # 手册 §5.3：run 目录必须含 run_manifest.json（含 git 状态、代码版本哈希、
     # 配置副本、数据集规模、采样率与通道列表）。写在训练之前，崩溃也不丢登记。
     write_run_manifest(
@@ -343,13 +433,17 @@ def main() -> None:
             "eval_samples": args.eval_samples,
             "eval_mode": "first_experiment",
             "channels": args.channels,
-            "channel_list": None,
+            "channel_list": channel_list,
             "window_size": args.length,
             "sample_rate": args.sample_rate,
             "use_public_sources": args.use_public_sources,
             "data_root": str(args.data_root),
         },
-        extra={"route_modes": list(ROUTE_MODES), "condition_names": list(CONDITION_NAMES)},
+        extra={
+            "route_modes": list(ROUTE_MODES),
+            "condition_names": list(CONDITION_NAMES),
+            "montage": montage_info,
+        },
     )
 
     model_config = UniCOREEGConfig(in_channels=args.channels, sample_rate=args.sample_rate, window_size=args.length)
@@ -367,6 +461,7 @@ def main() -> None:
         seed=args.seed,
         use_public_sources=args.use_public_sources,
         data_root=args.data_root,
+        montage_coords=coords,
         split="train",
     )
     eval_set = SyntheticEEGDataset(
@@ -378,6 +473,7 @@ def main() -> None:
         mode="first_experiment",
         use_public_sources=args.use_public_sources,
         data_root=args.data_root,
+        montage_coords=coords,
         split="test",
     )
     loader_kwargs = dataloader_kwargs(args.batch_size, args.num_workers, device)
@@ -388,8 +484,8 @@ def main() -> None:
         f"precision={runtime['precision']} torch_compile={runtime['torch_compile']}"
     )
     if not args.checkpoint:
-        train_model(model, train_loader, args, device)
-    frame, diagnostics = evaluate(model, eval_loader, device)
+        train_model(model, train_loader, args, device, spatial)
+    frame, diagnostics = evaluate(model, eval_loader, device, spatial)
     write_report(frame, diagnostics, args.out)
     print(f"report={args.out / 'report.md'}")
 

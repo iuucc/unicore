@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 import math
 
@@ -32,6 +33,17 @@ class UniCOREEGConfig:
     clean_threshold: float = 0.50
     router_temperature: float = 1.0
     eps: float = 1e-5
+    # ---- 空间投影（T1.3）----
+    use_spatial: bool = True
+    spatial_pca_rank: int = 4
+    spatial_modulation_alpha_scale: float = 1.0
+    spatial_coord_dim: int = 2
+    spatial_power_iterations: int = 4
+    spatial_hidden: int = 32
+    spatial_pca_mode: str = "power"
+    #: "raw"：直接取坐标的前 coord_dim 个分量（对任何坐标系都成立）；
+    #: "disk"：用 montage 的等距方位投影压到头部圆盘（需要坐标系的"上"轴已知）。
+    spatial_coord_space: str = "raw"
 
     def __post_init__(self) -> None:
         if self.artifact_count != len(ARTIFACT_NAMES):
@@ -51,6 +63,20 @@ def _moving_average(x: Tensor, kernel_size: int) -> Tensor:
     if kernel_size % 2 == 0:
         kernel_size -= 1
     return F.avg_pool1d(x, kernel_size, stride=1, padding=kernel_size // 2)
+
+
+@contextlib.contextmanager
+def no_autocast(y: Tensor):
+    """在观测抽取里**关掉 autocast**。
+
+    只把张量转成 float32 是不够的：``@`` 是 autocast 的降精度算子，
+    即使输入已经是 float32，autocast 也会把它降回 bf16，随后
+    ``torch.linalg.solve`` 就会报
+    ``NotImplementedError: "lu_factor_cublas" not implemented for 'BFloat16'``
+    （CPU 后端是 ``lu_cpu``）。所以必须显式退出 autocast，而不是改 dtype。
+    """
+    with torch.autocast(device_type=y.device.type, enabled=False):
+        yield
 
 
 class ConvGNAct(nn.Module):
@@ -122,46 +148,329 @@ class FiLMBlock(nn.Module):
 
 
 class ArtifactObservationExtractor(nn.Module):
+    """把原始波形拆成 6 类"伪迹观测"，供各专家使用（T1.2 多通道化）。
+
+    输入 ``y: (B, C, T)``，输出 ``list[Tensor]`` 长度 6，每个 ``(B, C, T)``，
+    顺序与 :data:`ARTIFACT_NAMES` 一致：
+
+    =====  ==================  ==============================================
+    序号   专家                观测口径
+    =====  ==================  ==============================================
+    0      harmonic            窄带正弦基拟合；**频率估计共享**（谱在全通道上平均后找峰），
+                              **幅相系数逐通道独立求解**，输出逐通道拟合曲线
+    1      ocular_drift        慢趋势（逐通道移动平均）
+    2      myogenic            高频分量（去局部均值）
+    3      cardiac             准周期脉冲；**逐通道自相关寻峰**得到各自的滞后
+    4      motion_transient    一阶/二阶差分组合
+    5      unknown             已知解释后的残差
+    =====  ==================  ==============================================
+
+    改造前的实现有两处把多通道压成单通道（``y.mean(dim=1)`` 后
+    ``expand_as(y)``），会让所有导联拿到完全相同的谐波基与心电滞后，
+    空间信息在进入专家之前就被抹掉了。这里全部改为逐通道。
+    """
+
     def __init__(self, sample_rate: int) -> None:
         super().__init__()
         self.sample_rate = sample_rate
 
-    def _harmonic_basis(self, y: Tensor) -> Tensor:
-        length = y.size(-1)
-        spectrum = torch.fft.rfft(y, dim=-1).abs().mean(dim=1)
-        frequencies = torch.fft.rfftfreq(length, 1.0 / self.sample_rate).to(y.device)
+    def peak_frequency(self, y: Tensor) -> Tensor:
+        """对全通道平均后的谱找峰（8–80 Hz），返回 ``(B,)``。
+
+        频率是共享的：同一次记录里的线噪基频对所有导联相同，只有幅相不同。
+        """
+        work = y.float()
+        length = work.size(-1)
+        with no_autocast(y):
+            spectrum = torch.fft.rfft(work, dim=-1).abs().mean(dim=1)
+        frequencies = torch.fft.rfftfreq(length, 1.0 / self.sample_rate).to(work.device)
         valid = (frequencies >= 8.0) & (frequencies <= min(80.0, self.sample_rate / 2.0 - 1.0))
         masked = spectrum.masked_fill(~valid.unsqueeze(0), -1.0)
-        peak_frequency = frequencies[masked.argmax(dim=-1)]
-        time = torch.arange(length, device=y.device, dtype=y.dtype) / self.sample_rate
-        basis = []
-        for harmonic in (1.0, 2.0, 3.0):
-            phase = 2.0 * math.pi * harmonic * peak_frequency[:, None] * time[None]
-            basis.extend((torch.sin(phase), torch.cos(phase)))
-        design = torch.stack(basis, dim=-1)
-        coefficients = torch.linalg.lstsq(design.float(), y.mean(dim=1).float().unsqueeze(-1)).solution
-        fitted = torch.matmul(design.float(), coefficients).squeeze(-1).to(y.dtype)
-        return fitted.unsqueeze(1).expand_as(y)
+        return frequencies[masked.argmax(dim=-1)]
+
+    def _harmonic_basis(self, y: Tensor) -> Tensor:
+        """逐通道窄带拟合，返回 ``(B, C, T)``（dtype 与输入一致）。
+
+        频率仍然只估一次（对通道平均后的谱找峰，8–80 Hz）——同一个记录里的
+        线噪基频是共同的；但幅相系数按通道各解各的，保留导联间的位置差异。
+        """
+        work = y.float()
+        length = work.size(-1)
+        with no_autocast(y):
+            peak_frequency = self.peak_frequency(work)
+            time = torch.arange(length, device=work.device, dtype=torch.float32) / self.sample_rate
+            basis = []
+            for harmonic in (1.0, 2.0, 3.0):
+                phase = 2.0 * math.pi * harmonic * peak_frequency[:, None] * time[None]
+                basis.extend((torch.sin(phase), torch.cos(phase)))
+            design = torch.stack(basis, dim=-1)  # (B, T, 6)
+
+        # 逐通道最小二乘解析求解。用带极小岭项的正规方程解 (6,6) 线性系统，
+        # 比 torch.linalg.lstsq 快得多，且在基函数退化（峰频落到 0）时不会发散；
+        # 岭项 1e-6 相对设计矩阵的 O(1) 量级可忽略，数值上等价于无正则最小二乘。
+        with no_autocast(y):
+            signal = work.transpose(1, 2)  # (B, T, C)
+            gram = design.transpose(1, 2) @ design  # (B, 6, 6)
+            eye = torch.eye(gram.size(-1), device=gram.device, dtype=gram.dtype) * 1e-6
+            coefficients = torch.linalg.solve(gram + eye, design.transpose(1, 2) @ signal)
+            fitted = (design @ coefficients).transpose(1, 2)  # (B, C, T)
+        return fitted.to(y.dtype)
+
+    def cardiac_lags(self, y: Tensor) -> Tensor:
+        """逐通道自相关寻峰得到的滞后（采样点），形状 ``(B, C)``。
+
+        各导联的心电到达时间与形态不同，共享一个滞后会丢掉这个差异。
+        """
+        work = y.float()
+        with no_autocast(y):
+            autocorrelation = torch.fft.irfft(
+                torch.fft.rfft(work, dim=-1).abs().square(), n=work.size(-1), dim=-1
+            )
+        lag_start = max(int(0.4 * self.sample_rate), 1)
+        lag_end = min(int(1.5 * self.sample_rate), work.size(-1) - 1)
+        if lag_end <= lag_start:  # 窗口过短时退化为全窗搜索，避免空切片
+            lag_start, lag_end = 1, work.size(-1) - 1
+        return autocorrelation[..., lag_start:lag_end].argmax(dim=-1) + lag_start
+
+    def _cardiac(self, y: Tensor, lags: Tensor | None = None) -> Tensor:
+        """逐通道构造准周期脉冲，返回 ``(B, C, T)``（dtype 与输入一致）。"""
+        work = y.float()
+        if lags is None:
+            lags = self.cardiac_lags(work)
+        length = work.size(-1)
+        index = torch.arange(length, device=work.device)
+        # roll(sample, +lag) 等价于在 i 处取 sample[i - lag]；逐通道滞后用 gather 一次算完，
+        # 不用对 batch 做 Python 循环。
+        minus = (index[None, None, :] - lags[:, :, None]) % length
+        plus = (index[None, None, :] + lags[:, :, None]) % length
+        periodic = (work + torch.gather(work, 2, minus) + torch.gather(work, 2, plus)) / 3.0
+        first_diff = F.pad(work[..., 1:] - work[..., :-1], (1, 0))
+        return (periodic + 0.25 * first_diff.abs() * torch.tanh(work)).to(y.dtype)
 
     def forward(self, y: Tensor) -> list[Tensor]:
-        slow = _moving_average(y, max(int(self.sample_rate * 0.25) | 1, 3))
-        local = _moving_average(y, max(int(self.sample_rate * 0.04) | 1, 3))
-        high = y - local
-        first_diff = F.pad(y[..., 1:] - y[..., :-1], (1, 0))
-        second_diff = F.pad(first_diff[..., 1:] - first_diff[..., :-1], (1, 0))
-        mono = y.mean(dim=1)
-        autocorrelation = torch.fft.irfft(torch.fft.rfft(mono, dim=-1).abs().square(), n=y.size(-1), dim=-1)
-        lag_start = max(int(0.4 * self.sample_rate), 1)
-        lag_end = min(int(1.5 * self.sample_rate), y.size(-1) - 1)
-        cardiac_lags = autocorrelation[:, lag_start:lag_end].argmax(dim=-1) + lag_start
-        periodic = torch.stack([
-            (sample + torch.roll(sample, int(lag), dims=-1) + torch.roll(sample, -int(lag), dims=-1)) / 3.0
-            for sample, lag in zip(y, cardiac_lags)
-        ])
-        pulse = periodic + 0.25 * first_diff.abs() * torch.tanh(y)
-        motion = torch.tanh(2.0 * first_diff) + 0.5 * torch.tanh(second_diff)
-        unexplained = y - slow - high
-        return [self._harmonic_basis(y), slow, high, pulse, motion, unexplained]
+        """``y: (B, C, T)`` → 6 个 ``(B, C, T)`` 观测，顺序同 :data:`ARTIFACT_NAMES`。
+
+        **内部一律用 float32 计算**，出入口再转换 dtype。原因有二：
+
+        * 这些算子里既有 FFT 又有线性求解，半精度不会带来任何收益；
+        * 半精度还会引入**跨设备差异**：CUDA 的 FFT 支持 bf16 而 CPU 不支持
+          （``RuntimeError: Unsupported dtype BFloat16``），bf16 的 LU 分解则
+          两个后端都没有实现（``lu_factor_cublas`` / ``lu_cpu`` not implemented for 'BFloat16'）。
+          训练时 ``robust_normalize`` 会被 autocast 推成 bf16，所以这条路径必然被走到。
+
+        输出保持输入的 dtype，以免改变下游 autocast 的行为。
+        """
+        if y.dim() != 3:
+            raise ValueError(f"expected (batch, channels, time), got {tuple(y.shape)}")
+        work = y.float()
+        with no_autocast(y):
+            slow = _moving_average(work, max(int(self.sample_rate * 0.25) | 1, 3))
+            local = _moving_average(work, max(int(self.sample_rate * 0.04) | 1, 3))
+            high = work - local
+            first_diff = F.pad(work[..., 1:] - work[..., :-1], (1, 0))
+            second_diff = F.pad(first_diff[..., 1:] - first_diff[..., :-1], (1, 0))
+            pulse = self._cardiac(work)
+            motion = torch.tanh(2.0 * first_diff) + 0.5 * torch.tanh(second_diff)
+            unexplained = work - slow - high
+            observations = [self._harmonic_basis(work), slow, high, pulse, motion, unexplained]
+        if y.dtype != torch.float32:
+            observations = [item.to(y.dtype) for item in observations]
+        return observations
+
+
+#: 只有这两路观测接受空间权重调制（手册 §6.4 步骤 6）。
+SPATIAL_MODULATED_ARTIFACTS: tuple[str, ...] = ("ocular_drift", "cardiac")
+SPATIAL_MODULATED_INDICES: tuple[int, ...] = tuple(
+    ARTIFACT_NAMES.index(name) for name in SPATIAL_MODULATED_ARTIFACTS
+)
+
+
+def _orthonormalize(block: Tensor, eps: float = 1e-6) -> Tensor:
+    """把 ``(B, T, k)`` 的列组正交化并归一化。
+
+    **必须"投影完立刻归一化"再进入下一列**：如果保留未归一化的列当参考向量，
+    后面每次投影减掉的都是范数暴涨的向量，残差会被指数放大
+    （实测 4 列就会从 337 涨到 3.4e22，随即归一化除以 inf 得到 NaN）。
+    第一遍构造正交基，第二遍用已归一化的列再扫一遍以提升正交性。
+    """
+    columns: list[Tensor] = []
+    for index in range(block.size(-1)):
+        vector = block[:, :, index]
+        for previous in columns:
+            vector = vector - (previous * vector).sum(dim=-1, keepdim=True) * previous
+        columns.append(vector / vector.norm(dim=1, keepdim=True).clamp_min(eps))
+
+    refined: list[Tensor] = []
+    for vector in columns:
+        for previous in refined:
+            vector = vector - (previous * vector).sum(dim=-1, keepdim=True) * previous
+        refined.append(vector / vector.norm(dim=1, keepdim=True).clamp_min(eps))
+    return torch.stack(refined, dim=-1)
+
+
+class SpatialProjectionHead(nn.Module):
+    """显式空间投影（手册 T1.3、§6.4）。
+
+    设计依据：设计文档 §3.4.4「多通道模式利用不同电极上的空间投影一致性」、
+    §3.4.2「空间前额优势」、§3.7「源时程 + 空间投影因子化」。
+    位置在观测抽取之后、专家调用之前，**只调制 cardiac 与 ocular_drift 两路**：
+    ``obs_k ← obs_k * (1 + α·w_s)``，其余四路不动。
+
+    为什么是 DeepSets（逐通道 MLP + 注意力池化）而不是 ``nn.Linear``：
+    ``nn.Linear(C, ·)`` 会把通道数写死，违反 D1「每个实验内 C 固定、跨实验可变」。
+    本模块参数量与 ``C`` **严格无关**（有单测钉住）。
+
+    两处与 §6.4 字面的差异（都记在附录 C）：
+
+    1. §6.4 步骤 2 算出了逐通道载荷 ``(B, C, rank)``，但步骤 3–5 没有再用它。
+       逐通道载荷恰恰是"空间投影一致性"的载体，所以这里把它作为 MLP 的输入特征之一。
+       特征维度 = 坐标(coord_dim) + RMS(1) + 有坐标标志(1) + 载荷(rank)，与 C 无关。
+    2. §6.4 说"对 ``y_norm`` 做 SVD"。逐 batch 精确 SVD 在本机代价过大
+       （``C=128`` 时每 batch 要 64 次 128×1000 分解），默认改用**确定性幂迭代**
+       求同一子空间（``spatial_pca_mode="power"``）。精确路径保留为 ``"svd"``，
+       两者子空间一致性有单测断言（主角度）。
+    """
+
+    def __init__(self, config: UniCOREEGConfig) -> None:
+        super().__init__()
+        self.rank = max(int(config.spatial_pca_rank), 1)
+        self.coord_dim = max(int(config.spatial_coord_dim), 1)
+        self.iterations = max(int(config.spatial_power_iterations), 1)
+        self.mode = str(config.spatial_pca_mode)
+        self.coord_space = str(config.spatial_coord_space)
+        self.alpha_scale = float(config.spatial_modulation_alpha_scale)
+        self.eps = float(config.eps)
+
+        hidden = int(config.spatial_hidden)
+        feature_dim = self.coord_dim + 2 + self.rank
+        self.per_channel = nn.Sequential(
+            nn.Linear(feature_dim, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, hidden),
+            nn.SiLU(),
+        )
+        self.attention = nn.Linear(hidden, 1)
+        self.to_logit = nn.Linear(hidden, 1)
+        self.from_context = nn.Linear(hidden, 1)
+        # α 用 tanh 有界化、初值取 0：初始化时整个模块是恒等映射，
+        # 于是"打开 use_spatial"不会在训练一开始就扰动既有行为（单通道回归因此更干净）。
+        self.alpha_raw = nn.Parameter(torch.zeros(1))
+
+    # ------------------------------------------------------------------
+    def component_directions(self, y: Tensor) -> Tensor:
+        """前 ``rank`` 个空间主成分的时序，形状 ``(B, rank, T)``。
+
+        ``power``（默认）：确定性幂迭代。``svd``：精确 SVD，用于复核。
+
+        通道数少于 ``rank`` 时用零列补齐，保证输出维度恒为 ``rank``——
+        否则 MLP 的输入维度会随 ``C`` 变化，违反"空间模块参数量与 C 无关"。
+        """
+        batch, channels, length = y.shape
+        usable = min(self.rank, channels)
+
+        if self.mode == "svd":
+            # 必须 full_matrices=False，否则会产出 T×T 的 Vh（C=128/T=1000 时 256 MB）
+            _, _, vh = torch.linalg.svd(y, full_matrices=False)
+            directions = vh[:, :usable, :]
+        elif self.mode == "power":
+            # 用"通道前若干行的时序"做确定性初值，再反复做 v ← yᵀ(y·v)，中间正交化。
+            # 每轮开销 O(B·C·T·rank)，比 B 次 SVD 小几个量级。
+            basis = y[:, :usable, :].transpose(1, 2).contiguous()
+            for _ in range(self.iterations):
+                basis = _orthonormalize(basis, eps=self.eps)
+                projected = torch.matmul(y, basis)  # (B, C, usable)
+                basis = torch.matmul(y.transpose(1, 2), projected)  # (B, T, usable)
+            basis = _orthonormalize(basis, eps=self.eps)
+            directions = basis.transpose(1, 2)
+        else:
+            raise ValueError(f"未知的 spatial_pca_mode={self.mode!r}（可用 power / svd）")
+
+        if usable < self.rank:
+            pad = directions.new_zeros(batch, self.rank - usable, length)
+            directions = torch.cat((directions, pad), dim=1)
+        return directions
+
+    def channel_loadings(self, y: Tensor, directions: Tensor, rms: Tensor) -> Tensor:
+        """逐通道载荷 ``(B, C, rank)``：通道时序与主成分的相关（按 RMS 归一）。"""
+        loadings = torch.matmul(y, directions.transpose(1, 2)) / y.size(-1)
+        return loadings / rms.unsqueeze(-1).clamp_min(self.eps)
+
+    def project_coordinates(self, coords: Tensor, coords_mask: Tensor | None = None) -> Tensor:
+        """把 ``(B, C, 3)`` 坐标压成 MLP 能吃的 ``(B, C, coord_dim)``。
+
+        ``raw``（默认）：直接取前 ``coord_dim`` 个分量。对任何坐标系都成立——
+        各数据集的坐标轴含义不同（参考表是 RAS，ds004784 是 x=前/y=左右），
+        但"前两个分量"在各自坐标系里都是稳定的二维编码，不需要额外约定。
+
+        ``disk``：用 montage 的等距方位投影压到头部圆盘。语义更接近"头地图"，
+        但要求坐标系的"上"轴确实是 +z（参考表与 ds004784 都满足）。
+        """
+        if self.coord_space == "disk":
+            from .montage import project_to_disk
+
+            base = coords[0] if coords.dim() == 3 else coords
+            projected = project_to_disk(base, coords_mask)
+            projected = projected.unsqueeze(0).expand(coords.size(0), -1, -1)
+        elif self.coord_space == "raw":
+            projected = coords
+        else:
+            raise ValueError(
+                f"未知的 spatial_coord_space={self.coord_space!r}（可用 raw / disk）"
+            )
+
+        out = projected[..., : self.coord_dim]
+        if out.size(-1) < self.coord_dim:  # 坐标维度不足时补零
+            pad = out.new_zeros(out.size(0), out.size(1), self.coord_dim - out.size(-1))
+            out = torch.cat((out, pad), dim=-1)
+        return out
+
+    def forward(
+        self,
+        y_norm: Tensor,
+        coords: Tensor | None = None,
+        coords_mask: Tensor | None = None,
+    ) -> Tensor:
+        """返回逐通道空间权重 ``w_s: (B, C, 1)``。"""
+        batch, channels, _ = y_norm.shape
+        rms = y_norm.square().mean(dim=-1).sqrt()  # (B, C)
+        directions = self.component_directions(y_norm)
+        loadings = self.channel_loadings(y_norm, directions, rms)  # (B, C, rank)
+
+        if coords is None:
+            projected = y_norm.new_zeros(batch, channels, self.coord_dim)
+            has_coords = y_norm.new_zeros(batch, channels, 1)
+        else:
+            if coords.dim() == 2:
+                coords = coords.unsqueeze(0).expand(batch, -1, -1)
+            if coords.size(1) != channels:
+                raise ValueError(
+                    f"coords 有 {coords.size(1)} 个通道，与输入通道数 {channels} 不一致"
+                )
+            projected = self.project_coordinates(coords, coords_mask)
+            if coords_mask is None:
+                has_coords = y_norm.new_ones(batch, channels, 1)
+            else:
+                has_coords = coords_mask.to(y_norm.dtype).view(1, -1, 1).expand(batch, -1, 1)
+
+        feature = torch.cat(
+            (projected * has_coords, rms.unsqueeze(-1), has_coords, loadings), dim=-1
+        )
+        hidden = self.per_channel(feature)  # (B, C, H)，逐通道独立作用
+
+        # 注意力池化：没有坐标的通道不参与注意力（否则它们会把上下文带偏）
+        scores = self.attention(hidden).squeeze(-1)
+        scores = scores.masked_fill(has_coords.squeeze(-1) < 0.5, float("-inf"))
+        weights = torch.softmax(scores, dim=-1)
+        weights = torch.nan_to_num(weights, nan=1.0 / max(channels, 1))
+        context = torch.einsum("bc,bch->bh", weights, hidden)  # (B, H)
+
+        logit = self.to_logit(hidden) + self.from_context(context).unsqueeze(1)
+        return torch.sigmoid(logit)
+
+    def build_modulation(self, w_s: Tensor, reference: Tensor) -> Tensor:
+        """``1 + α·w_s``，形状 ``(B, C, 1)``。α 有界且初值为 0（恒等映射）。"""
+        alpha = self.alpha_scale * torch.tanh(self.alpha_raw).to(reference.dtype)
+        return 1.0 + alpha * w_s.to(reference.dtype)
 
 
 class ArtifactTokenizer(nn.Module):
@@ -439,6 +748,7 @@ class UniCOREEG(nn.Module):
         self.config = config or UniCOREEGConfig()
         dims = (self.config.base_channels, 96, 160, 256)
         self.observations = ArtifactObservationExtractor(self.config.sample_rate)
+        self.spatial = SpatialProjectionHead(self.config)
         self.stem = SharedStem(self.config.in_channels, self.config.base_channels)
         self.tokenizer = ArtifactTokenizer(self.config)
         self.router = SparseRouter(self.config)
@@ -468,12 +778,27 @@ class UniCOREEG(nn.Module):
         oracle_labels: Tensor | None = None,
         disabled_experts: Tensor | None = None,
         enable_residual: bool = True,
+        coords: Tensor | None = None,
+        coords_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
         y_norm, median, mad, stats = self.robust_normalize(y)
         h0 = self.stem(y_norm)
         token_outputs = self.tokenizer(y_norm, h0, stats, metadata)
         neural_features = self.content_encoder(h0)
         observations = self.observations(y_norm)
+
+        # --- 空间投影：只调制 cardiac 与 ocular_drift 两路观测（T1.3）---
+        spatial_weights = None
+        if self.config.use_spatial:
+            spatial_weights = self.spatial(y_norm, coords, coords_mask)  # (B, C, 1)
+            modulation = self.spatial.build_modulation(spatial_weights, observations[0])
+            observations = list(observations)
+            for index in SPATIAL_MODULATED_INDICES:
+                observations[index] = observations[index] * modulation
+        spatial_modulation = (
+            None if spatial_weights is None else self.spatial.build_modulation(spatial_weights, y_norm)
+        )
+
         known_features = [
             expert(neural_features, token_outputs["tokens"][:, index], observations[index])
             for index, expert in enumerate(self.experts[:-1])
@@ -511,7 +836,7 @@ class UniCOREEG(nn.Module):
             residual = torch.zeros_like(y_norm)
         identity_strength = self.identity_gate(y_norm, token_outputs["probabilities"], artifact_sum, residual, routing["bypass"])
         clean_norm = y_norm + identity_strength * (coarse_clean + residual - y_norm)
-        return {
+        outputs: dict[str, Tensor] = {
             "clean": clean_norm * mad + median,
             "clean_norm": clean_norm,
             "coarse_clean_norm": coarse_clean,
@@ -526,6 +851,12 @@ class UniCOREEG(nn.Module):
             **token_outputs,
             **routing,
         }
+        if spatial_weights is not None:
+            # 仅在启用空间投影时出现这两个键：use_spatial=False 的返回字典与改造前逐键一致，
+            # 使等价性回归可以直接比对整个字典。
+            outputs["spatial_weights"] = spatial_weights
+            outputs["spatial_modulation"] = spatial_modulation
+        return outputs
 
 
 def count_parameters(model: nn.Module) -> int:

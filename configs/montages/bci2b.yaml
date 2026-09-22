@@ -1,0 +1,21 @@
+name: bci2b
+description: BCI Competition IV 2b，3 导（C3/Cz/C4）
+resolve: names
+bipolar: false
+channel_count: 3
+source: 原始 EDF 实测通道名 EEG:C3 / EEG:Cz / EEG:C4（T0.3 探测）
+channels:
+- C3
+- Cz
+- C4
+sample_rate: 250.0
+aux:
+- raw: EOG:ch01
+  kind: eog
+- raw: EOG:ch02
+  kind: eog
+- raw: EOG:ch03
+  kind: eog
+notes:
+- '手册 T1.1 写作"3 双极"，但原始通道是无第二电极的标准位名（EEG:C3/Cz/C4），旧项目 constants.py::BCI2B_EEG_CHANNELS 也把它们列为标准名，故按标准位取坐标、不做中点（bipolar:
+  false）。见附录 C。'

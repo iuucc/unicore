@@ -1,0 +1,76 @@
+name: openbmi
+description: OpenBMI，62 路原始 EEG（g.USBamp 64 导布局去掉 2 个参考通道）
+resolve: names
+bipolar: false
+channel_count: 62
+source: 原始 .mat 的 struct 字段 `chan`（62 项，T0.3 补充探测）
+channels:
+- Fp1
+- Fp2
+- F7
+- F3
+- Fz
+- F4
+- F8
+- FC5
+- FC1
+- FC2
+- FC6
+- T7
+- C3
+- Cz
+- C4
+- T8
+- TP9
+- CP5
+- CP1
+- CP2
+- CP6
+- TP10
+- P7
+- P3
+- Pz
+- P4
+- P8
+- PO9
+- O1
+- Oz
+- O2
+- PO10
+- FC3
+- FC4
+- C5
+- C1
+- C2
+- C6
+- CP3
+- CPz
+- CP4
+- P1
+- P2
+- POz
+- FT9
+- FTT9h
+- TTP7h
+- TP7
+- TPP9h
+- FT10
+- FTT10h
+- TPP8h
+- TP8
+- TPP10h
+- F9
+- F10
+- AF7
+- AF3
+- AF4
+- AF8
+- PO3
+- PO4
+available_layouts:
+- 原始 .mat：62 路
+- cache/subj*_session*_mi.npz：20 路，是本配置通道的子集，按名解析即可
+notes:
+- FTT9h/TTP7h/TPP9h/FTT10h/TPP8h/TPP10h 六个名字不在 standard_1020，由 standard_1005 提供精确坐标。缓存通道：['FC5', 'FC3',
+  'FC1', 'FC2', 'FC4', 'FC6', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2',
+  'CP4', 'CP6']

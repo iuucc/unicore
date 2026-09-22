@@ -105,12 +105,21 @@ def load_config(
 ) -> dict[str, Any]:
     """加载配置并解析 ``extends`` 链与 ``@paths.*`` 符号。
 
-    相对路径的 ``extends`` 以 ``config_root``（默认 ``configs/``）为基准；
-    也接受同目录内的相对写法。
+    相对路径的解析顺序：**先看相对当前工作目录是否存在**，不存在再以
+    ``config_root``（默认 ``configs/``）为基准。这样 ``--config configs/base.yaml``
+    与 ``--config base.yaml`` 都能用——前者是命令行里最自然的写法，
+    后者在脚本内部引用时更短。若不这样做，``configs/base.yaml`` 会被拼成
+    ``configs/configs/base.yaml`` 而报 FileNotFoundError。
+
+    相对路径的 ``extends`` 以被加载文件所在目录为基准。
     """
     target = Path(path)
     if not target.is_absolute():
-        target = (Path(config_root) if config_root else DEFAULT_CONFIG_ROOT) / target
+        from_cwd = target.resolve()
+        if from_cwd.exists():
+            target = from_cwd
+        else:
+            target = (Path(config_root) if config_root else DEFAULT_CONFIG_ROOT) / target
     target = target.resolve()
     if target in _stack:
         chain = " -> ".join(str(item) for item in (*_stack, target))

@@ -14,21 +14,29 @@ name: multichannel_base
 
 montage:
   # 指向 configs/montages/<name>.yaml；由该文件给出通道列表、坐标与是否双极。
-  name: null                # 例：bci2a / ds004784 / ds004784_19ch / physiomotion
+  name: null                # 例：bci2a / ds004784 / physiomotion / cap_sleep
   file: null                # 例：montages/bci2a.yaml（相对 configs/）
   # 显式覆盖通道列表；null 表示直接使用 montage 文件的全部通道。
+  # 例：用参考表里的 8 导子集起一个 C=8 的合成训练 → channels: [Fp1, Fp2, F7, F8, O1, O2, C3, C4]
+  # 注意：**没有 ds004784_19ch.yaml** —— 体模的 128 电极是球面阵而非 10-20 头皮帽，
+  # 最近邻映射无判别力，该文件经确认放弃（见手册附录 C 与 ds004784.yaml 的 notes）。
   channels: null
   # 通道数由 montage 解析结果决定，这里只是断言位；解析结果与之不符即报错。
   expect_channels: null
 
 # 多通道下的模型开关（手册 §6.4 T1.3）
+# 键名与 UniCOREEGConfig 的字段一一对应（spatial_* 前缀），避免两处漂移。
 spatial:
-  use_spatial: true             # false 时等价于未加空间投影模块
-  pca_rank: 4                   # SVD 取前 4 个右奇异向量
-  modulation_alpha_scale: 1.0   # 空间权重只调制 ocular_drift 与 cardiac 两个观测
+  use_spatial: true               # false 时等价于未加空间投影模块
+  pca_rank: 4                     # 对应 spatial_pca_rank
+  pca_mode: power                 # 对应 spatial_pca_mode（power | svd）
+  power_iterations: 4             # 对应 spatial_power_iterations
+  coord_space: raw                # 对应 spatial_coord_space（raw | disk）
+  modulation_alpha_scale: 1.0     # 对应 spatial_modulation_alpha_scale
+  hidden: 32                      # 对应 spatial_hidden
 
 # 合成器真混音（手册 §6.5 T1.4）；仅合成实验使用
 mixer:
   enabled: true
   propagation_delay_ms: 8.0     # τ ~ U(-8ms, +8ms)
-  record_mixing_matrix: true    # 样本字典带出 mixing_matrix 供空间指标评价
+  record_mixing_matrix: true    # 样本字典带出 mixing_matrix（形状 (6, C)）供空间指标评价

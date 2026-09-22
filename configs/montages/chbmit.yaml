@@ -1,0 +1,33 @@
+name: chbmit
+description: CHB-MIT 头皮 EEG，23 路双极导联（坐标取两端电极中点）
+resolve: names
+bipolar: true
+channel_count: 23
+source: 原始 EDF 实测通道名（T0.3 探测）
+channels:
+- FP1-F7
+- F7-T7
+- T7-P7
+- P7-O1
+- FP1-F3
+- F3-C3
+- C3-P3
+- P3-O1
+- FP2-F4
+- F4-C4
+- C4-P4
+- P4-O2
+- FP2-F8
+- F8-T8
+- T8-P8-0
+- P8-O2
+- FZ-CZ
+- CZ-PZ
+- P7-T7
+- T7-FT9
+- FT9-FT10
+- FT10-T8
+- T8-P8-1
+sample_rate: 256.0
+notes:
+- 名称里的 T8-P8-0 / T8-P8-1 是同名导联的两个重名通道，解析时剥掉末位序号后都落到 T8–P8 的中点（两者坐标相同，符合数据实际）。T9/FT9/FT10/T10 均在参考表中，不需要近似。

@@ -1,0 +1,34 @@
+name: cap_sleep
+description: CAP Sleep Database，13 路双极 EEG 导联（原记录 18 路，其余为 ROC/EMG/ECG/DX/SX）
+resolve: names
+bipolar: true
+channel_count: 13
+source: 原始 EDF 实测通道名（T0.3 探测）
+channels:
+- Fp2-F4
+- F4-C4
+- C4-P4
+- P4-O2
+- F8-T4
+- T4-T6
+- FP1-F3
+- F3-C3
+- C3-P3
+- P3-O1
+- F7-T3
+- T3-T5
+- C4-A1
+sample_rate: 512.0
+available_layouts:
+- cap_sleep 原始 EDF：18 路（本配置取其中 13 路 EEG 导联）
+- cap_sleep/feature_cache/*.npz：8 路，全部是本配置通道的子集，按名解析即可，无需另建 montage
+- 整库不统一（实测 512Hz/18、256Hz/18、512Hz/22 三种），另两种布局的通道名尚未探测到，待阶段 2 遇到时补
+unresolved:
+- ROC-LOC
+- EMG1-EMG2
+- ECG1-ECG2
+- DX1-DX2
+- SX1-SX2
+notes:
+- C4-A1 里的 A1 是乳突参考位，在参考表中有坐标。feature_cache 实测通道：['Fp2-F4', 'F4-C4', 'C4-P4', 'P4-O2', 'Fp1-F3', 'F3-C3',
+  'C3-P3', 'P3-O1']

@@ -1,0 +1,74 @@
+name: bci2a
+description: BCI Competition IV 2a，22 导国际 10-20 系统（其余 3 路为 EOG）
+resolve: positional
+bipolar: false
+channel_count: 22
+source: POOL 旁旧项目 constants.py::BCI2A_EEG_CHANNELS（顺序与原始 EDF 一致，已用锚点校验）
+channels:
+- Fz
+- FC3
+- FC1
+- FCz
+- FC2
+- FC4
+- C5
+- C3
+- C1
+- Cz
+- C2
+- C4
+- C6
+- CP3
+- CP1
+- CPz
+- CP2
+- CP4
+- P1
+- Pz
+- P2
+- POz
+sample_rate: 250.0
+raw_layout:
+- EEG-Fz
+- EEG-0
+- EEG-1
+- EEG-2
+- EEG-3
+- EEG-4
+- EEG-5
+- EEG-C3
+- EEG-6
+- EEG-Cz
+- EEG-7
+- EEG-C4
+- EEG-8
+- EEG-9
+- EEG-10
+- EEG-11
+- EEG-12
+- EEG-13
+- EEG-14
+- EEG-Pz
+- EEG-15
+- EEG-16
+- EOG-left
+- EOG-central
+- EOG-right
+anchors:
+  '0': EEG-Fz
+  '7': EEG-C3
+  '9': EEG-Cz
+  '11': EEG-C4
+  '19': EEG-Pz
+aux:
+- raw: EOG-left
+  kind: eog
+- raw: EOG-central
+  kind: eog
+- raw: EOG-right
+  kind: eog
+notes:
+- 原始 EDF 只有 4 个带名通道（EEG-Fz / EEG-C3 / EEG-Cz / EEG-C4 / EEG-Pz），其余是 EEG-0..EEG-16。五个锚点在实测通道表里的位置与 BCI2A_EEG_CHANNELS
+  完全一致，因此按位置映射成立。实测通道表：['EEG-Fz', 'EEG-0', 'EEG-1', 'EEG-2', 'EEG-3', 'EEG-4', 'EEG-5', 'EEG-C3', 'EEG-6',
+  'EEG-Cz', 'EEG-7', 'EEG-C4', 'EEG-8', 'EEG-9', 'EEG-10', 'EEG-11', 'EEG-12', 'EEG-13', 'EEG-14', 'EEG-Pz',
+  'EEG-15', 'EEG-16', 'EOG-left', 'EOG-central', 'EOG-right']

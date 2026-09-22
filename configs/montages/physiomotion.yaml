@@ -1,0 +1,44 @@
+name: physiomotion
+description: PhysioMotion，34 路双极导联（坐标取两端电极中点）
+resolve: names
+bipolar: true
+channel_count: 34
+source: 原始 EDF 实测通道名，与 POOL 旁旧项目 constants.py::PHYSIOMOTION_BIPOLAR_CHANNELS 逐字一致
+channels:
+- Fp1-F7
+- F7-T7
+- T7-P7
+- P7-O1
+- Fp1-F3
+- F3-C3
+- C3-P3
+- P3-O1
+- Fz-Cz
+- Cz-Pz
+- Fp2-F4
+- F4-C4
+- C4-P4
+- P4-O2
+- Fp2-F8
+- F8-T8
+- T8-P8
+- P8-O2
+- F7-Fp1
+- Fp1-Fp2
+- F7-F3
+- F3-Fz
+- Fz-F4
+- F4-F8
+- T7-C3
+- C3-Cz
+- Cz-C4
+- C4-T8
+- P7-P3
+- P3-Pz
+- Pz-P4
+- P4-P8
+- O1-O2
+- O2-P8
+sample_rate: 1000.0
+notes:
+- 实测采样率 1000 Hz（非手册早期写的 500 Hz）。双极导联坐标 = 两端电极坐标中点。

@@ -1,0 +1,18 @@
+name: sleep_edfx
+description: Sleep-EDF，2 路双极 EEG（Fpz-Cz、Pz-Oz），其余为呼吸/肌电/体温/事件标记
+resolve: names
+bipolar: true
+channel_count: 2
+source: 原始 EDF 实测通道名（T0.3 探测）；两个名字的写法需去掉前缀 'EEG '
+channels:
+- EEG Fpz-Cz
+- EEG Pz-Oz
+sample_rate: 100.0
+unresolved:
+- EOG horizontal
+- Resp oro-nasal
+- EMG submental
+- Temp rectal
+- Event marker
+notes:
+- 缓存 npz（cache20/*.npz）没有 channels 字段，无法核实缓存里的 2 个通道身份，阶段 2 加载时应断言其与 (Fpz-Cz, Pz-Oz) 的对应关系。
