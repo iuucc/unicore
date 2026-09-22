@@ -367,10 +367,10 @@ $targets | Select-Object ProcessId,@{n='MB';e={[int]($_.WorkingSetSize/1MB)}},Co
 
 **"一步到位"意味着放弃单通道作为主线的退路。** 由此产生三个必须现在就定的问题：
 
-1. **通道数按数据集分别固定，不追求跨数据集统一。** 理由：设计文档 §2.2 明确要求"所有结果必须按通道设置分别报告，不得用'主体结构兼容'暗示能力等价"。强行把 2 导（Sleep-EDF）和 128 导（ds004784）统一到同一 C 上，只会引入插值误差并掩盖差异。
-   → **规则：每个实验配置文件声明一个 `montage`，实验内 C 固定；跨数据集比较时在报告中显式列出各自的 C 与通道列表。**
+1. **数据集保留原生通道数，不要求把信号插值到统一 C；同一套模型权重必须能直接处理不同 C。** 设计文档 §2.2 要求结果按通道设置分别报告，不得把不同通道数的实验包装成性能等价；这条不限制权重共享。
+   → **规则：每条记录携带自己的 montage、坐标与 `channel_mask`；训练批次可把较短通道轴补零，但损失、池化和输出都必须屏蔽补齐位置。报告显式列出数据集 C 与通道列表。**
 
-2. **模型必须支持任意 C，不能有依赖固定 C 的层。** 现有 `model.py` 的卷积层天然支持任意 C，但 `ArtifactObservationExtractor` 目前把多通道压成单通道（详见 6.3），必须改造。新增的空间模块一律用 DeepSets 式（per-channel MLP + 池化）结构，禁止 `nn.Linear(C, …)`。
+2. **同一模型实例和同一 checkpoint 必须支持任意 C。** 所有时序层对每个通道复用相同权重；跨通道信息通过 mask-aware 集合汇聚和坐标条件化交互建模。禁止把 C 写入卷积输入/输出维度、Linear 输入维度或模型参数形状。验收必须用一个模型实例依次处理 C=1/3/8/34/64/128，并验证参数量不随 C 改变。
 
 3. **合成器的"多通道"必须是真混音，不能是复制。** 现有 `synthetic.py:125-131` 的 `_expand_channels` 只是对同一个源做缩放 + 时移后堆叠，通道间没有真正的空间混合信息。**空间投影模块在这种数据上什么也学不到。** 必须替换为混音矩阵方案（T1.4）。
 
@@ -926,8 +926,9 @@ grep -rn "codexwork.eeg" unicore_eeg scripts tests configs | grep -v "unicore_ee
 
 **验收**
 - 单测：`C ∈ {1, 2, 3, 34, 64, 128}` 前向 + 反向均成功，无 NaN。
-- 单测：`count_parameters` 在 `C=2` 与 `C=128` 下**完全相同**（证明参数量与 C 无关）。
+- 单测：同一模型实例与同一 `state_dict` 在上述所有 C 下连续前向；整模型 `count_parameters` **完全相同**。
 - 单测：`use_spatial=False` 时输出与未加该模块时一致（等价性回归）。
+- 单测：重排输入通道与坐标后，clean 与逐通道分量输出按同样顺序重排；缺失通道经 `channel_mask` 后不影响有效通道。
 
 ---
 
@@ -958,7 +959,8 @@ grep -rn "codexwork.eeg" unicore_eeg scripts tests configs | grep -v "unicore_ee
 **步骤**
 1. 新建 `scripts/smoke_multichannel.py`：对 `C ∈ {1, 3, 8, 34, 64, 128}` 各构造一个 batch，跑前向 + 损失 + 反向一步，打印参数量、显存峰值、单步耗时。
 2. 新建 `scripts/regress_multichannel.py`：跑 T0.5 与 T1.2/T1.4 的对照，输出 `runs/_regress/regress_multichannel.md`，列出"改造前 / 改造后"的单通道指标差。
-3. 用 `configs/multichannel_base.yaml` 起一个 `C=8` 的小规模合成训练（`--train-samples 2048 --epochs 2`），确认能跑完不崩。
+3. 实现 `collate_variable_channels`：同一 batch 混合不同 C，按最大 C 补零并生成 `channel_mask`；所有池化、输出和损失均应用该 mask。
+4. 用一个 C=8 montage 子集起小规模合成训练（`--train-samples 2048 --epochs 2`），确认能跑完不崩；另对至少两种 C 的样本组成一个混合 batch，完成一次损失反向传播。
 
 **验收**
 - `smoke_multichannel.py` 六种 C 全部成功。
@@ -971,6 +973,8 @@ grep -rn "codexwork.eeg" unicore_eeg scripts tests configs | grep -v "unicore_ee
 
 - [ ] 观测抽取器返回 6 个 `(B,C,T)` 张量，多通道单测全绿
 - [ ] `SpatialProjectionHead` 参数量与 C 无关
+- [ ] **整模型参数量与 C 无关；同一个模型实例/检查点可连续处理 C=1/3/8/34/64/128**
+- [ ] **跨 C 混合 batch 可训练；通道重排等变；padding 与缺导由 `channel_mask` 正确屏蔽**
 - [ ] 合成器混音矩阵具备各伪迹的空间先验，多通道分量互不相同
 - [ ] 单通道回归：`macro_auroc` 相对 T0.5 基线差 < 0.03
 - [ ] `C ∈ {1,3,8,34,64,128}` 冒烟全部通过
@@ -1751,3 +1755,4 @@ wait
 | 2026-09-22 | §6.5 ocular 先验 | 手册只写"前额优势 → 按坐标 Fp1/Fp2/F7/F8 位置加权，**其余衰减**"，未规定衰减宽度。实现初版用纯高斯 σ=0.35（头半径），导致 Fp→枕区（距离约 2.3）衰减到 `exp(-0.5·(2.3/0.35)²) ≈ 4e-10` | 改为 `A_ocular[c] = OCULAR_FLOOR + (1−OCULAR_FLOOR)·exp(−0.5·(d_c/OCULAR_SIGMA)²)`，取 **σ=0.9、floor=0.02**。理由：纯 σ=0.35 时枕区实际收不到眼动分量，"按空间分布去除眼动"在后部退化成"什么都不用做"，阶段 4 的空间一致性指标会虚高；而下界取大（试过 0.08）会把远端压平、丢掉梯度。现分布为前额 ≈0.9／中央 ≈0.3／枕区 ≈0.095，前额/枕区 ≈10×，与 EOG 的容积传导量级接近。`test_ocular_mixing_favours_frontal` 同时钉住"前额显著占优（>5×）""枕区非零""前额>中央>枕区单调"三条，防止参数被调回任一端 |
 | 2026-09-22 | T1.5 步骤 3 | 手册要求"用 `configs/multichannel_base.yaml` 起一个 `C=8` 的小规模合成训练"，但该配置的 `montage.name` 为 `null`，且没有任何 8 导的数据集 montage | `first_experiment.py` 新增 `--montage` 与 `--montage-channels`（后者从 montage 的参考表里取子集）。C=8 训练实际命令为 `--config configs/multichannel_base.yaml --montage standard_reference --montage-channels Fp1 Fp2 F7 F8 O1 O2 C3 C4`，满足决策 D1 的"每个实验必须声明 montage"。`standard_reference.yaml` 同时补上 `channels`/`channel_count` 字段，使其既作坐标表也能被当作布局引用 |
 | 2026-09-22 | T1.5 步骤 3 | `--config configs/multichannel_base.yaml` 报 `FileNotFoundError: configs/configs/multichannel_base.yaml` | `load_config()` 的相对路径解析改为**先看相对当前工作目录是否存在**，不存在再以 `config_root` 为基准。这样 `--config configs/base.yaml`（命令行里最自然的写法）与脚本内部传 `base.yaml` 都能用 |
+| 2026-09-22 | D1 / Gate 1 | 用户明确要求“同一套权重可跨不同通道数直接使用”；原架构只保证空间头参数与 C 无关，主干、路由器与输出头仍把 C 写进权重形状 | Gate 1 改为同一实例/同一检查点跨 C、整模型参数不随 C 变化、混合 C 批次与 `channel_mask`、通道置换等变。所有逐通道时序层共享权重，跨通道信息用集合汇聚；montage 坐标转为统一 `(right, anterior, superior)` 轴 |

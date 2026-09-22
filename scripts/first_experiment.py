@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig, paths
 from unicore_eeg.config import resolve_settings
+from unicore_eeg.batching import collate_variable_channels
 from unicore_eeg.losses import UniCORELoss
 from unicore_eeg.manifest import write_run_manifest
 from unicore_eeg.model import count_parameters
@@ -183,6 +184,7 @@ def train_model(
                     batch["noisy"],
                     metadata=batch["metadata"],
                     **spatial_kwargs(batch, spatial),
+                    channel_mask=batch.get("channel_mask"),
                     disabled_experts=batch["disabled_experts"],
                     enable_residual=stage != "decomposition",
                 )
@@ -257,6 +259,7 @@ def evaluate(
                     batch["noisy"],
                     metadata=batch["metadata"],
                     **spatial_kwargs(batch, spatial),
+                    channel_mask=batch.get("channel_mask"),
                     route_mode=mode,
                     oracle_labels=batch["labels"] if mode == "oracle" else None,
                     disabled_experts=batch["disabled_experts"],
@@ -396,7 +399,7 @@ def main() -> None:
             coords, mask, channel_list = subset_coords, subset_mask, subset
         else:
             coords, mask, channel_list = spec.coords, spec.mask, list(spec.channels)
-        coords = coords.float()
+        coords = spec.to_head_ras(coords.float())
         channel_count = len(channel_list)
         if args.channels is not None and int(args.channels) != channel_count:
             raise SystemExit(
@@ -477,8 +480,8 @@ def main() -> None:
         split="test",
     )
     loader_kwargs = dataloader_kwargs(args.batch_size, args.num_workers, device)
-    train_loader = DataLoader(train_set, shuffle=True, **loader_kwargs)
-    eval_loader = DataLoader(eval_set, shuffle=False, **loader_kwargs)
+    train_loader = DataLoader(train_set, shuffle=True, collate_fn=collate_variable_channels, **loader_kwargs)
+    eval_loader = DataLoader(eval_set, shuffle=False, collate_fn=collate_variable_channels, **loader_kwargs)
     print(
         f"device={device} params={count_parameters(model):,} num_workers={args.num_workers} "
         f"precision={runtime['precision']} torch_compile={runtime['torch_compile']}"

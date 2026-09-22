@@ -625,6 +625,18 @@ class MontageTests(unittest.TestCase):
         radii = [float(M.resolve_electrode(name)[1].norm()) for name in M.REFERENCE_19_NAMES]
         self.assertAlmostEqual(float(np.mean(radii)), 1.0, places=5)
 
+    def test_montages_convert_to_common_head_axes(self) -> None:
+        """标准坐标与 ds004784 坐标都按 right/anterior/superior 输出。"""
+        from unicore_eeg import montage as M
+
+        reference = M.load_montage("standard_reference")
+        phantom = M.load_montage("ds004784")
+        fp1_head = reference.to_head_ras(torch.tensor([reference.coordinates["Fp1"]]))[0]
+        a1_head = phantom.to_head_ras(torch.tensor(phantom.coordinates["A1"]))
+        self.assertGreater(float(fp1_head[1]), 0.5)
+        self.assertGreater(float(a1_head[2]), 0.99)
+        self.assertTrue(torch.allclose(a1_head[:2], torch.zeros(2), atol=1e-6))
+
     def test_project_to_disk(self) -> None:
         """二维投影：有效通道落在单位圆内，被 mask 的通道严格为零。"""
         from unicore_eeg import montage as M
@@ -1188,27 +1200,73 @@ class SpatialProjectionTests(unittest.TestCase):
                 UniCOREEGConfig(in_channels=4, spatial_coord_space="nonsense")
             ).project_coordinates(torch.randn(1, 4, 3))
 
-    def test_whole_model_parameter_growth_is_explained(self) -> None:
-        """如实记录：**整模型**参数量本来就随 C 变化，与空间模块无关。
-
-        手册 T1.3 的验收写的是"``count_parameters`` 在 C=2 与 C=128 下完全相同"，
-        但改造前的模型就已经不满足：``ArtifactTokenizer`` 的 ``stat_dim = in_channels * 3``
-        会进入 ``fuse`` 的输入维度，再加上首/尾若干 ``Conv1d(in_channels, …)``。
-        Gate 1 的对应条款是"``SpatialProjectionHead`` 参数量与 C 无关"，本用例即按 Gate 1 判。
-        """
+    def test_whole_model_parameter_count_is_independent_of_channels(self) -> None:
+        """同一 state_dict 可用于所有 C，整模型参数量不得随 C 变化。"""
         from unicore_eeg.model import UniCOREEG
 
-        small = count_parameters(UniCOREEG(UniCOREEGConfig(in_channels=2)))
-        large = count_parameters(UniCOREEG(UniCOREEGConfig(in_channels=128)))
-        self.assertGreater(large, small)
-        self.assertEqual(
-            large - small,
-            771_120,
-            "整模型的 C 相关参数量变了；要么是设计改动，要么是新的 C 依赖层混进来了",
+        counts = [count_parameters(UniCOREEG(UniCOREEGConfig(in_channels=c))) for c in self.COUNTS]
+        self.assertEqual(len(set(counts)), 1, f"模型参数量随 C 变化：{dict(zip(self.COUNTS, counts))}")
+
+    def test_one_model_instance_runs_all_channel_counts(self) -> None:
+        """同一实例、同一组权重依次处理多种 C，不重建模型。"""
+        from unicore_eeg.model import UniCOREEG
+
+        torch.manual_seed(11)
+        model = UniCOREEG(UniCOREEGConfig(in_channels=1)).eval()
+        reference_state = {name: value.clone() for name, value in model.state_dict().items()}
+        for channels in self.COUNTS:
+            with self.subTest(channels=channels), torch.no_grad():
+                output = model(torch.randn(1, channels, 1000))
+                self.assertEqual(tuple(output["clean"].shape), (1, channels, 1000))
+                self.assertTrue(torch.isfinite(output["clean"]).all())
+        for name, value in model.state_dict().items():
+            self.assertTrue(torch.equal(value, reference_state[name]), f"forward 修改了参数 {name}")
+        restored = UniCOREEG(UniCOREEGConfig(in_channels=128)).eval()
+        restored.load_state_dict(reference_state, strict=True)
+        with torch.no_grad():
+            output = restored(torch.randn(1, 128, 1000))
+        self.assertEqual(tuple(output["clean"].shape), (1, 128, 1000))
+
+    def test_channel_permutation_equivariance(self) -> None:
+        """重排输入通道及坐标后，输出应以同一排列重排。"""
+        from unicore_eeg.model import UniCOREEG
+
+        torch.manual_seed(12)
+        model = UniCOREEG().eval()
+        signal = torch.randn(1, 8, 1000)
+        coords = torch.randn(8, 3)
+        permutation = torch.randperm(8)
+        inverse = torch.argsort(permutation)
+        with torch.no_grad():
+            original = model(signal, coords=coords)
+            reordered = model(signal[:, permutation], coords=coords[permutation])
+        self.assertTrue(torch.allclose(original["clean"], reordered["clean"][:, inverse], atol=5e-4, rtol=1e-4))
+        self.assertTrue(torch.allclose(
+            original["artifact_components_norm"],
+            reordered["artifact_components_norm"][:, :, inverse], atol=5e-4, rtol=1e-4
+        ))
+
+    def test_variable_channel_batch_and_masked_loss(self) -> None:
+        """不同 C 可在同一 batch 补齐训练，padding 不贡献输出或损失。"""
+        from unicore_eeg.batching import collate_variable_channels
+        from unicore_eeg.losses import UniCORELoss
+        from unicore_eeg.model import UniCOREEG
+
+        samples = [
+            SyntheticEEGDataset(samples=1, channels=3, length=1000, seed=19)[0],
+            SyntheticEEGDataset(samples=1, channels=8, length=1000, seed=20)[0],
+        ]
+        batch = collate_variable_channels(samples)
+        model = UniCOREEG().train()
+        outputs = model(
+            batch["noisy"], metadata=batch["metadata"], disabled_experts=batch["disabled_experts"],
+            coords=batch["coords"], channel_mask=batch["channel_mask"],
         )
-        # 这部分差异必须能完全由"与 C 成正比"的既有层解释：Δ 与 (C-2) 成正比
-        middle = count_parameters(UniCOREEG(UniCOREEGConfig(in_channels=65)))
-        self.assertEqual(middle - small, 771_120 * 63 // 126)
+        loss, _ = UniCORELoss()(outputs, batch)
+        loss.backward()
+        self.assertTrue(torch.isfinite(loss))
+        self.assertEqual(tuple(batch["channel_mask"].shape), (2, 8))
+        self.assertTrue(torch.equal(outputs["clean"][0, 3:], torch.zeros_like(outputs["clean"][0, 3:])))
 
 
 class SyntheticMixingTests(unittest.TestCase):

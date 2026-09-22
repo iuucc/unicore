@@ -233,7 +233,7 @@ class Montage:
 
     @property
     def frame_axes(self) -> dict[str, list[float]]:
-        """坐标系的"上"与"前"轴（单位向量）。
+        """坐标系的解剖方向基（单位向量）。
 
         参考表用 MNE head RAS，因此默认值就是 (0,0,1) / (0,1,0)；
         坐标系不同的数据集（如 ds004784）必须在配置里用 ``frame_axes`` 显式声明，
@@ -246,7 +246,25 @@ class Montage:
         }
         for key, value in declared.items():
             axes[str(key)] = [float(item) for item in value]
+        if "right" not in axes:
+            anterior = torch.tensor(axes["anterior"], dtype=torch.float32)
+            up = torch.tensor(axes["up"], dtype=torch.float32)
+            axes["right"] = torch.linalg.cross(anterior, up).tolist()
         return axes
+
+    def to_head_ras(self, coords: Tensor | None = None) -> Tensor:
+        """把 montage 坐标转成统一的 (right, anterior, superior) 轴顺序。
+
+        返回新张量，不改写配置里保留的原始坐标。模型跨 montage 共用权重时，
+        必须让“前额方向”在每个数据集里落到同一维度。
+        """
+        source = self.coords if coords is None else torch.as_tensor(coords, dtype=torch.float32)
+        axes = self.frame_axes
+        basis = torch.tensor([axes["right"], axes["anterior"], axes["up"]], dtype=source.dtype, device=source.device)
+        gram = basis @ basis.T
+        if not torch.allclose(gram, torch.eye(3, dtype=gram.dtype, device=gram.device), atol=1e-3):
+            raise MontageError(f"{self.name}: frame_axes 必须是正交单位向量，得到 {basis.tolist()}")
+        return source @ basis.T
 
 
 def list_montages() -> tuple[str, ...]:

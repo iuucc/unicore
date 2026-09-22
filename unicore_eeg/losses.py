@@ -35,21 +35,40 @@ def charbonnier(pred: Tensor, target: Tensor, eps: float = 1e-3) -> Tensor:
     return torch.sqrt((pred - target).square() + eps * eps).mean()
 
 
+def _channel_mean(values: Tensor, channel_mask: Tensor | None, channel_axis: int = 1) -> Tensor:
+    """Mean over valid electrode entries, ignoring batch padding."""
+    if channel_mask is None:
+        return values.mean()
+    mask = channel_mask.to(values.dtype)
+    if channel_axis == 2:
+        mask = mask[:, None, :, None]
+    else:
+        while mask.ndim < values.ndim:
+            mask = mask.unsqueeze(-1)
+    mask = mask.expand_as(values)
+    return (values * mask).sum() / mask.sum().clamp_min(1.0)
+
+
 def correlation_loss(pred: Tensor, target: Tensor, eps: float = 1e-6) -> Tensor:
     pred_centered = pred - pred.mean(dim=-1, keepdim=True)
     target_centered = target - target.mean(dim=-1, keepdim=True)
     return 1.0 - F.cosine_similarity(pred_centered, target_centered, dim=-1, eps=eps).mean()
 
 
-def multi_resolution_stft_loss(pred: Tensor, target: Tensor) -> Tensor:
-    pred = pred.flatten(0, 1)
-    target = target.flatten(0, 1)
+def multi_resolution_stft_loss(pred: Tensor, target: Tensor, channel_mask: Tensor | None = None) -> Tensor:
+    batch, channels, _ = pred.shape
+    pred = pred.reshape(batch * channels, -1)
+    target = target.reshape(batch * channels, -1)
     losses = []
     for n_fft in (64, 128, 256):
         window = torch.hann_window(n_fft, device=pred.device, dtype=pred.dtype)
         pred_spec = torch.stft(pred, n_fft=n_fft, hop_length=n_fft // 4, window=window, return_complex=True)
         target_spec = torch.stft(target, n_fft=n_fft, hop_length=n_fft // 4, window=window, return_complex=True)
-        losses.append(F.l1_loss(torch.log1p(pred_spec.abs()), torch.log1p(target_spec.abs())))
+        per_channel = (torch.log1p(pred_spec.abs()) - torch.log1p(target_spec.abs())).abs().mean(dim=(1, 2)).reshape(batch, channels)
+        if channel_mask is None:
+            losses.append(per_channel.mean())
+        else:
+            losses.append(_channel_mean(per_channel, channel_mask))
     return torch.stack(losses).mean()
 
 
@@ -60,21 +79,30 @@ class UniCORELoss(nn.Module):
 
     def forward(self, outputs: dict[str, Tensor], batch: dict[str, Tensor]) -> tuple[Tensor, dict[str, Tensor]]:
         mad = outputs["mad"].clamp_min(1e-5)
+        channel_mask = batch.get("channel_mask", outputs.get("channel_mask"))
         y_norm = (batch["noisy"] - outputs["median"]) / mad
         clean_norm = (batch["clean"] - outputs["median"]) / mad
         artifact_norm = batch["artifacts"] / mad.unsqueeze(1)
 
         final = (
-            self.weights.final_charbonnier * charbonnier(outputs["clean_norm"], clean_norm)
-            + self.weights.final_corr * correlation_loss(outputs["clean_norm"], clean_norm)
-            + self.weights.final_diff * F.l1_loss(torch.diff(outputs["clean_norm"], dim=-1), torch.diff(clean_norm, dim=-1))
-            + self.weights.final_stft * multi_resolution_stft_loss(outputs["clean_norm"], clean_norm)
+            self.weights.final_charbonnier * _channel_mean(torch.sqrt((outputs["clean_norm"] - clean_norm).square() + 1e-6), channel_mask)
+            + self.weights.final_corr * _channel_mean(1.0 - F.cosine_similarity(
+                outputs["clean_norm"] - outputs["clean_norm"].mean(-1, keepdim=True),
+                clean_norm - clean_norm.mean(-1, keepdim=True), dim=-1
+            ), channel_mask)
+            + self.weights.final_diff * _channel_mean(torch.diff(outputs["clean_norm"], dim=-1).sub(torch.diff(clean_norm, dim=-1)).abs(), channel_mask)
+            + self.weights.final_stft * multi_resolution_stft_loss(outputs["clean_norm"], clean_norm, channel_mask)
         )
-        coarse = F.smooth_l1_loss(outputs["coarse_clean_norm"], clean_norm)
+        coarse = _channel_mean(F.smooth_l1_loss(outputs["coarse_clean_norm"], clean_norm, reduction="none"), channel_mask)
         component_mask = batch.get("component_mask", batch["labels"]).bool()
         artifact_error = F.smooth_l1_loss(outputs["artifact_components_norm"], artifact_norm, reduction="none")
-        artifact = _masked_mean(artifact_error, component_mask)
-        decomp = F.l1_loss(y_norm, outputs["coarse_clean_norm"] + outputs["artifact_sum_norm"])
+        if channel_mask is not None:
+            component_mask = component_mask.to(artifact_error.dtype)[:, :, None, None] * channel_mask.to(artifact_error.dtype)[:, None, :, None]
+            artifact_mask = component_mask.expand_as(artifact_error)
+            artifact = (artifact_error * artifact_mask).sum() / artifact_mask.sum().clamp_min(1.0)
+        else:
+            artifact = _masked_mean(artifact_error, component_mask)
+        decomp = _channel_mean((y_norm - outputs["coarse_clean_norm"] - outputs["artifact_sum_norm"]).abs(), channel_mask)
 
         label_mask = batch.get("label_mask", torch.ones_like(batch["labels"])).bool()
         route_pos_weight = batch["labels"].new_tensor([3.0, 3.0, 3.0, 3.5, 3.5, 5.0])
@@ -109,7 +137,11 @@ class UniCORELoss(nn.Module):
         )
         clean_false_alarm = _masked_mean(outputs["probabilities"].amax(dim=-1), is_clean)
         artifact_miss = _masked_mean(F.relu(0.65 - outputs["artifact_presence_probability"]), artifact_present)
-        identity_error = (outputs["clean_norm"] - y_norm).abs().mean(dim=(1, 2))
+        if channel_mask is None:
+            identity_error = (outputs["clean_norm"] - y_norm).abs().mean(dim=(1, 2))
+        else:
+            identity_values = (outputs["clean_norm"] - y_norm).abs() * channel_mask.to(y_norm.dtype).unsqueeze(-1)
+            identity_error = identity_values.sum(dim=(1, 2)) / (channel_mask.sum(dim=1).clamp_min(1) * y_norm.size(-1))
         identity_target = torch.where(is_clean, torch.zeros_like(outputs["identity_strength"]), torch.full_like(outputs["identity_strength"], 0.75))
         identity = (
             _masked_mean(identity_error, is_clean)
@@ -118,7 +150,12 @@ class UniCORELoss(nn.Module):
             + 0.1 * artifact_miss
         )
 
-        unknown_energy_per_sample = (outputs["artifact_components_norm"][:, -1].square().mean(dim=(1, 2)) + 1e-8).sqrt()
+        unknown_energy_tensor = outputs["artifact_components_norm"][:, -1].square()
+        if channel_mask is None:
+            unknown_energy_per_sample = (unknown_energy_tensor.mean(dim=(1, 2)) + 1e-8).sqrt()
+        else:
+            unknown_weight = channel_mask.to(unknown_energy_tensor.dtype).unsqueeze(-1)
+            unknown_energy_per_sample = ((unknown_energy_tensor * unknown_weight).sum(dim=(1, 2)) / (channel_mask.sum(dim=1).clamp_min(1) * unknown_energy_tensor.size(-1)) + 1e-8).sqrt()
         unknown_target = batch["labels"][:, -1].bool()
         unknown_energy = _masked_mean(unknown_energy_per_sample, ~unknown_target)
         known_present = batch["labels"][:, :-1].bool().any(dim=-1) & ~unknown_target

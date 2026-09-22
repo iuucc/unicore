@@ -21,6 +21,8 @@ ARTIFACT_NAMES = (
 
 @dataclass
 class UniCOREEGConfig:
+    # Kept for config/checkpoint compatibility. The current architecture shares
+    # all learned channel operations, so this value does not size any parameter.
     in_channels: int = 1
     sample_rate: int = 500
     window_size: int = 1000
@@ -110,10 +112,11 @@ class ConvGNAct(nn.Module):
 
 
 class SharedStem(nn.Module):
-    def __init__(self, in_channels: int, base_channels: int) -> None:
+    def __init__(self, base_channels: int) -> None:
         super().__init__()
         self.net = nn.Sequential(
-            ConvGNAct(in_channels, 32, 7),
+            # C is folded into the batch dimension before entering the stem.
+            ConvGNAct(1, 32, 7),
             ConvGNAct(32, 32, 15, groups=32),
             ConvGNAct(32, base_channels, 1),
         )
@@ -317,7 +320,7 @@ class SpatialProjectionHead(nn.Module):
     ``obs_k ← obs_k * (1 + α·w_s)``，其余四路不动。
 
     为什么是 DeepSets（逐通道 MLP + 注意力池化）而不是 ``nn.Linear``：
-    ``nn.Linear(C, ·)`` 会把通道数写死，违反 D1「每个实验内 C 固定、跨实验可变」。
+    ``nn.Linear(C, ·)`` 会把通道数写死，无法让同一权重直接处理不同 C。
     本模块参数量与 ``C`` **严格无关**（有单测钉住）。
 
     两处与 §6.4 字面的差异（都记在附录 C）：
@@ -429,9 +432,17 @@ class SpatialProjectionHead(nn.Module):
         y_norm: Tensor,
         coords: Tensor | None = None,
         coords_mask: Tensor | None = None,
+        channel_mask: Tensor | None = None,
     ) -> Tensor:
         """返回逐通道空间权重 ``w_s: (B, C, 1)``。"""
         batch, channels, _ = y_norm.shape
+        if channel_mask is not None:
+            if channel_mask.dim() == 1:
+                channel_mask = channel_mask.unsqueeze(0).expand(batch, -1)
+            coords_mask = channel_mask if coords_mask is None else coords_mask
+            if coords_mask.dim() == 1:
+                coords_mask = coords_mask.unsqueeze(0).expand(batch, -1)
+            coords_mask = coords_mask.bool() & channel_mask.bool()
         rms = y_norm.square().mean(dim=-1).sqrt()  # (B, C)
         directions = self.component_directions(y_norm)
         loadings = self.channel_loadings(y_norm, directions, rms)  # (B, C, rank)
@@ -450,7 +461,9 @@ class SpatialProjectionHead(nn.Module):
             if coords_mask is None:
                 has_coords = y_norm.new_ones(batch, channels, 1)
             else:
-                has_coords = coords_mask.to(y_norm.dtype).view(1, -1, 1).expand(batch, -1, 1)
+                if coords_mask.dim() == 1:
+                    coords_mask = coords_mask.unsqueeze(0).expand(batch, -1)
+                has_coords = coords_mask.to(y_norm.dtype).unsqueeze(-1)
 
         feature = torch.cat(
             (projected * has_coords, rms.unsqueeze(-1), has_coords, loadings), dim=-1
@@ -476,18 +489,20 @@ class SpatialProjectionHead(nn.Module):
 class ArtifactTokenizer(nn.Module):
     def __init__(self, config: UniCOREEGConfig) -> None:
         super().__init__()
-        stat_dim = config.in_channels * 3
         self.metadata_dim = config.metadata_dim
+        self.base_channels = config.base_channels
         self.time_branch = nn.Sequential(
             ConvGNAct(config.base_channels, 96, 5, stride=2),
             ConvGNAct(96, 128, 5, stride=2),
         )
         self.freq_branch = nn.Sequential(
-            ConvGNAct(config.in_channels, 32, 7, stride=2),
+            ConvGNAct(1, 32, 7, stride=2),
             ConvGNAct(32, 64, 7, stride=2),
         )
-        fused_dim = 128 * 2 + 64 * 2 + stat_dim + config.metadata_dim
-        self.fuse = nn.Sequential(nn.Linear(fused_dim, 192), nn.SiLU(), nn.Linear(192, 128), nn.SiLU())
+        feature_dim = 128 * 2 + 64 * 2 + 3 + 4
+        self.per_channel = nn.Sequential(nn.Linear(feature_dim, 128), nn.SiLU(), nn.Linear(128, 128), nn.SiLU())
+        self.attention = nn.Linear(128, 1)
+        self.fuse = nn.Sequential(nn.Linear(128 + config.metadata_dim, 192), nn.SiLU(), nn.Linear(192, 128), nn.SiLU())
         self.prob = nn.Linear(128, config.artifact_count)
         self.artifact_presence = nn.Linear(128, 1)
         self.severity = nn.Linear(128, config.artifact_count)
@@ -498,15 +513,50 @@ class ArtifactTokenizer(nn.Module):
     def _pool(x: Tensor) -> Tensor:
         return torch.cat((x.mean(dim=-1), x.std(dim=-1, unbiased=False)), dim=-1)
 
-    def forward(self, y: Tensor, h0: Tensor, stats: Tensor, metadata: Tensor | None) -> dict[str, Tensor]:
+    def forward(
+        self,
+        y: Tensor,
+        h0: Tensor,
+        stats: Tensor,
+        metadata: Tensor | None,
+        coords: Tensor | None = None,
+        coords_mask: Tensor | None = None,
+        channel_mask: Tensor | None = None,
+    ) -> dict[str, Tensor]:
+        batch, channels, length = y.shape
+        if channel_mask is None:
+            channel_mask = torch.ones(batch, channels, dtype=torch.bool, device=y.device)
         if metadata is None:
             metadata = y.new_zeros((y.size(0), self.metadata_dim))
         elif metadata.shape != (y.size(0), self.metadata_dim):
             raise ValueError(f"metadata must have shape (batch, {self.metadata_dim})")
-        spectrum = torch.log1p(torch.fft.rfft(y, dim=-1).abs())
-        fused = self.fuse(
-            torch.cat((self._pool(self.time_branch(h0)), self._pool(self.freq_branch(spectrum)), stats.flatten(1), metadata), dim=-1)
-        )
+        if coords is None:
+            coords = y.new_zeros(batch, channels, 3)
+            coords_mask = torch.zeros(batch, channels, dtype=torch.bool, device=y.device)
+        else:
+            if coords.dim() == 2:
+                coords = coords.unsqueeze(0).expand(batch, -1, -1)
+            if coords_mask is None:
+                coords_mask = channel_mask
+            elif coords_mask.dim() == 1:
+                coords_mask = coords_mask.unsqueeze(0).expand(batch, -1)
+            coords_mask = coords_mask.bool() & channel_mask.bool()
+        channel_mask = channel_mask.bool()
+        flat_y = y.reshape(batch * channels, 1, length)
+        flat_h = h0.reshape(batch * channels, self.base_channels, length)
+        spectrum = torch.log1p(torch.fft.rfft(flat_y, dim=-1).abs())
+        channel_features = torch.cat((
+            self._pool(self.time_branch(flat_h)),
+            self._pool(self.freq_branch(spectrum)),
+            stats.reshape(batch * channels, 3),
+            coords.reshape(batch * channels, 3),
+            coords_mask.reshape(batch * channels, 1).to(y.dtype),
+        ), dim=-1).reshape(batch, channels, -1)
+        encoded = self.per_channel(channel_features)
+        attention = self.attention(encoded).squeeze(-1).masked_fill(~channel_mask, float("-inf"))
+        weights = torch.softmax(attention, dim=-1)
+        pooled = torch.einsum("bc,bch->bh", weights, encoded)
+        fused = self.fuse(torch.cat((pooled, metadata), dim=-1))
         logits = self.prob(fused)
         artifact_presence_logit = self.artifact_presence(fused).squeeze(-1)
         probabilities = torch.sigmoid(logits)
@@ -603,7 +653,7 @@ class ContentEncoder(nn.Module):
 
 
 class ArtifactExpert(nn.Module):
-    def __init__(self, dims: tuple[int, ...], token_dim: int, kind: str, in_channels: int) -> None:
+    def __init__(self, dims: tuple[int, ...], token_dim: int, kind: str) -> None:
         super().__init__()
         settings = {
             "harmonic": ((31, 15, 9, 7), (1, 2, 3, 4)),
@@ -621,16 +671,26 @@ class ArtifactExpert(nn.Module):
         for dim, kernel, dilation in zip(dims, kernels, dilations):
             hidden = max(int(dim * hidden_scale), 16)
             self.adapters.append(nn.Sequential(ConvGNAct(dim, hidden, kernel, dilation=dilation), nn.Conv1d(hidden, dim, 1)))
-            self.observation_proj.append(nn.Conv1d(in_channels, dim, 1))
+            self.observation_proj.append(nn.Conv1d(1, dim, 1))
             self.film.append(nn.Linear(token_dim, dim * 2))
 
     def forward(self, features: list[Tensor], token: Tensor, observation: Tensor) -> list[Tensor]:
         outputs = []
         for feature, adapter, obs_proj, film in zip(features, self.adapters, self.observation_proj, self.film):
-            obs = F.interpolate(observation, size=feature.size(-1), mode="linear", align_corners=False)
-            gamma, beta = film(token).chunk(2, dim=-1)
+            batch = None
+            obs_input, film_token = observation, token
+            if feature.dim() == 4:
+                batch, channels, width, length = feature.shape
+                feature = feature.reshape(batch * channels, width, length)
+                obs_input = observation.reshape(batch * channels, 1, observation.size(-1))
+                film_token = token[:, None, :].expand(batch, channels, -1).reshape(batch * channels, -1)
+            obs = F.interpolate(obs_input, size=feature.size(-1), mode="linear", align_corners=False)
+            gamma, beta = film(film_token).chunk(2, dim=-1)
             adapted = adapter(feature) + obs_proj(obs)
-            outputs.append(adapted * (1.0 + gamma.unsqueeze(-1)) + beta.unsqueeze(-1))
+            result = adapted * (1.0 + gamma.unsqueeze(-1)) + beta.unsqueeze(-1)
+            if batch is not None:
+                result = result.reshape(batch, channels, result.size(1), result.size(-1))
+            outputs.append(result)
         return outputs
 
 
@@ -643,11 +703,14 @@ class UnknownDetector(nn.Module):
             nn.Linear(64, 3),
         )
 
-    def forward(self, residual_feature: Tensor) -> tuple[Tensor, Tensor, Tensor]:
-        pooled = torch.cat(
-            (residual_feature.mean(dim=-1), residual_feature.std(dim=-1, unbiased=False)),
-            dim=-1,
-        )
+    def forward(self, residual_feature: Tensor, channel_mask: Tensor | None = None) -> tuple[Tensor, Tensor, Tensor]:
+        if residual_feature.dim() == 4:
+            batch, channels, _, _ = residual_feature.shape
+            if channel_mask is None:
+                channel_mask = residual_feature.new_ones(batch, channels)
+            weights = channel_mask.to(residual_feature.dtype).view(batch, channels, 1, 1)
+            residual_feature = (residual_feature * weights).sum(dim=1) / weights.sum(dim=1).clamp_min(1.0)
+        pooled = torch.cat((residual_feature.mean(dim=-1), residual_feature.std(dim=-1, unbiased=False)), dim=-1)
         logit, severity, priority = self.net(pooled).unbind(dim=-1)
         return logit, F.softplus(severity), priority
 
@@ -662,15 +725,31 @@ class CrossStreamGating(nn.Module):
             for dim in dims
         ])
 
-    def forward(self, neural: list[Tensor], experts: list[list[Tensor]], route: Tensor, token: Tensor) -> tuple[list[Tensor], Tensor]:
+    def forward(self, neural: list[Tensor], experts: list[list[Tensor]], route: Tensor, token: Tensor, channel_mask: Tensor | None = None) -> tuple[list[Tensor], Tensor]:
         purified, gate_values = [], []
         for level, neural_level in enumerate(neural):
-            stacked = torch.stack([expert[level] for expert in experts], dim=1)
-            mixed = (route[:, :, None, None] * stacked).sum(dim=1)
-            token_map = self.token_proj[level](token).unsqueeze(-1).expand_as(neural_level)
-            gate = self.gates[level](torch.cat((neural_level, mixed, token_map), dim=1))
-            purified.append(neural_level - gate * self.artifact_proj[level](mixed))
-            gate_values.append(gate.mean())
+            if neural_level.dim() == 4:
+                batch, channels, width, length = neural_level.shape
+                base = neural_level.reshape(batch * channels, width, length)
+                expert_level = [expert[level].reshape(batch * channels, width, length) for expert in experts]
+                level_route = route[:, None, :].expand(batch, channels, -1).reshape(batch * channels, -1)
+                level_token = token[:, None, :].expand(batch, channels, -1).reshape(batch * channels, -1)
+            else:
+                batch, channels = neural_level.size(0), 1
+                base, expert_level, level_route, level_token = neural_level, [expert[level] for expert in experts], route, token
+            stacked = torch.stack(expert_level, dim=1)
+            mixed = (level_route[:, :, None, None] * stacked).sum(dim=1)
+            token_map = self.token_proj[level](level_token).unsqueeze(-1).expand_as(base)
+            gate = self.gates[level](torch.cat((base, mixed, token_map), dim=1))
+            result = base - gate * self.artifact_proj[level](mixed)
+            if channel_mask is not None and neural_level.dim() == 4:
+                valid = channel_mask.reshape(batch * channels, 1, 1).to(gate.dtype)
+                gate_values.append((gate * valid).sum() / (valid.sum() * gate.size(1) * gate.size(2)).clamp_min(1.0))
+            else:
+                gate_values.append(gate.mean())
+            if neural_level.dim() == 4:
+                result = result.reshape(batch, channels, width, length)
+            purified.append(result)
         return purified, torch.stack(gate_values).mean()
 
 
@@ -683,13 +762,18 @@ class CoarseDecoder(nn.Module):
         for skip_dim in reversed_dims[1:]:
             self.up_blocks.append(nn.Sequential(ConvGNAct(in_dim + skip_dim, skip_dim, 3), MSBlock(skip_dim, 1)))
             in_dim = skip_dim
-        self.clean_head = nn.Conv1d(dims[0], config.in_channels, 1)
+        self.clean_head = nn.Conv1d(dims[0], 1, 1)
         self.artifact_heads = nn.ModuleList([
-            nn.Sequential(ConvGNAct(dims[0] * 2, dims[0], 7), nn.Conv1d(dims[0], config.in_channels, 1))
+            nn.Sequential(ConvGNAct(dims[0] * 2, dims[0], 7), nn.Conv1d(dims[0], 1, 1))
             for _ in ARTIFACT_NAMES
         ])
 
     def forward(self, features: list[Tensor], experts: list[list[Tensor]], route: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        batch, channels = features[-1].shape[:2] if features[-1].dim() == 4 else (features[-1].size(0), 1)
+        if features[-1].dim() == 4:
+            features = [item.reshape(batch * channels, item.size(2), item.size(3)) for item in features]
+            experts = [[item.reshape(batch * channels, item.size(2), item.size(3)) for item in expert] for expert in experts]
+            route = route[:, None, :].expand(batch, channels, -1).reshape(batch * channels, -1)
         x = features[-1]
         for block, skip in zip(self.up_blocks, reversed(features[:-1])):
             x = F.interpolate(x, size=skip.size(-1), mode="linear", align_corners=False)
@@ -699,6 +783,9 @@ class CoarseDecoder(nn.Module):
             head(torch.cat((x, expert[0]), dim=1)) for head, expert in zip(self.artifact_heads, experts)
         ], dim=1)
         artifact_sum = (route[:, :, None, None] * components).sum(dim=1)
+        coarse_clean = coarse_clean.reshape(batch, channels, -1)
+        components = components.reshape(batch, channels, len(ARTIFACT_NAMES), -1).permute(0, 2, 1, 3)
+        artifact_sum = artifact_sum.reshape(batch, channels, -1)
         return coarse_clean, components, artifact_sum
 
 
@@ -706,7 +793,7 @@ class ResidualRefiner(nn.Module):
     def __init__(self, config: UniCOREEGConfig) -> None:
         super().__init__()
         dims = (48, 96, 160)
-        self.in_proj = ConvGNAct(config.in_channels * 4, dims[0], 7)
+        self.in_proj = ConvGNAct(4, dims[0], 7)
         self.down1 = ConvGNAct(dims[0], dims[1], 5, stride=2)
         self.down2 = ConvGNAct(dims[1], dims[2], 5, stride=2)
         self.block0 = FiLMBlock(dims[0], config.token_dim, 1)
@@ -714,17 +801,25 @@ class ResidualRefiner(nn.Module):
         self.block2 = FiLMBlock(dims[2], config.token_dim, 4)
         self.up1 = ConvGNAct(dims[2] + dims[1], dims[1], 3)
         self.up0 = ConvGNAct(dims[1] + dims[0], dims[0], 3)
-        self.out = nn.Conv1d(dims[0], config.in_channels, 1)
+        self.out = nn.Conv1d(dims[0], 1, 1)
         self.rho = nn.Sequential(nn.Linear(2, 16), nn.SiLU(), nn.Linear(16, 1), nn.Sigmoid())
 
     def forward(self, inputs: Tensor, token: Tensor, max_probability: Tensor, mean_severity: Tensor) -> Tensor:
+        if inputs.dim() == 4:
+            batch, channels, _, length = inputs.shape
+            inputs = inputs.reshape(batch * channels, 4, length)
+            token = token[:, None, :].expand(batch, channels, -1).reshape(batch * channels, -1)
+            max_probability = max_probability[:, None].expand(batch, channels).reshape(-1)
+            mean_severity = mean_severity[:, None].expand(batch, channels).reshape(-1)
+        else:
+            batch, channels = inputs.size(0), 1
         x0 = self.block0(self.in_proj(inputs), token)
         x1 = self.block1(self.down1(x0), token)
         x2 = self.block2(self.down2(x1), token)
         y = self.up1(torch.cat((F.interpolate(x2, size=x1.size(-1), mode="linear", align_corners=False), x1), dim=1))
         y = self.up0(torch.cat((F.interpolate(y, size=x0.size(-1), mode="linear", align_corners=False), x0), dim=1))
         rho = 0.05 + 0.95 * self.rho(torch.stack((max_probability, mean_severity), dim=-1))
-        return rho.unsqueeze(-1) * torch.tanh(self.out(y))
+        return (rho.unsqueeze(-1) * torch.tanh(self.out(y))).reshape(batch, channels, -1)
 
 
 class IdentityGate(nn.Module):
@@ -733,10 +828,14 @@ class IdentityGate(nn.Module):
         self.linear = nn.Linear(3, 1)
         nn.init.constant_(self.linear.bias, -2.0)
 
-    def forward(self, y: Tensor, probabilities: Tensor, artifact_sum: Tensor, residual: Tensor, bypass: Tensor) -> Tensor:
-        denom = (y.square().mean(dim=(1, 2)) + 1e-8).sqrt()
-        artifact_ratio = (artifact_sum.square().mean(dim=(1, 2)) + 1e-8).sqrt() / denom
-        residual_ratio = (residual.square().mean(dim=(1, 2)) + 1e-8).sqrt() / denom
+    def forward(self, y: Tensor, probabilities: Tensor, artifact_sum: Tensor, residual: Tensor, bypass: Tensor, channel_mask: Tensor | None = None) -> Tensor:
+        if channel_mask is None:
+            channel_mask = y.new_ones(y.shape[:2])
+        weights = channel_mask.to(y.dtype).unsqueeze(-1)
+        count = (weights.sum(dim=(1, 2)) * y.size(-1)).clamp_min(1.0)
+        denom = ((y.square() * weights).sum(dim=(1, 2)) / count + 1e-8).sqrt()
+        artifact_ratio = (((artifact_sum.square() * weights).sum(dim=(1, 2)) / count + 1e-8).sqrt()) / denom
+        residual_ratio = (((residual.square() * weights).sum(dim=(1, 2)) / count + 1e-8).sqrt()) / denom
         features = torch.stack((probabilities.max(dim=-1).values, artifact_ratio, residual_ratio), dim=-1)
         strength = torch.sigmoid(self.linear(features)).view(-1, 1, 1)
         return strength.masked_fill(bypass.view(-1, 1, 1), 0.0)
@@ -749,12 +848,12 @@ class UniCOREEG(nn.Module):
         dims = (self.config.base_channels, 96, 160, 256)
         self.observations = ArtifactObservationExtractor(self.config.sample_rate)
         self.spatial = SpatialProjectionHead(self.config)
-        self.stem = SharedStem(self.config.in_channels, self.config.base_channels)
+        self.stem = SharedStem(self.config.base_channels)
         self.tokenizer = ArtifactTokenizer(self.config)
         self.router = SparseRouter(self.config)
         self.content_encoder = ContentEncoder(self.config.base_channels)
         self.experts = nn.ModuleList([
-            ArtifactExpert(dims, self.config.token_dim, name, self.config.in_channels) for name in ARTIFACT_NAMES
+            ArtifactExpert(dims, self.config.token_dim, name) for name in ARTIFACT_NAMES
         ])
         self.unknown_detector = UnknownDetector(dims[0])
         self.gating = CrossStreamGating(dims, self.config.token_dim)
@@ -762,12 +861,18 @@ class UniCOREEG(nn.Module):
         self.residual_refiner = ResidualRefiner(self.config)
         self.identity_gate = IdentityGate()
 
-    def robust_normalize(self, y: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    def robust_normalize(self, y: Tensor, channel_mask: Tensor | None = None) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+        if channel_mask is None:
+            channel_mask = torch.ones(y.shape[:2], dtype=torch.bool, device=y.device)
+        channel_mask = channel_mask.bool()
+        y = y.masked_fill(~channel_mask.unsqueeze(-1), 0.0)
         median = y.median(dim=-1, keepdim=True).values
         centered = y - median
         mad = centered.abs().median(dim=-1, keepdim=True).values.clamp_min(self.config.eps)
         y_norm = centered / mad
         stats = torch.log1p(torch.stack((y.square().mean(dim=-1).sqrt(), mad.squeeze(-1), y.amax(dim=-1) - y.amin(dim=-1)), dim=-1).clamp_min(0.0))
+        y_norm = y_norm.masked_fill(~channel_mask.unsqueeze(-1), 0.0)
+        stats = stats.masked_fill(~channel_mask.unsqueeze(-1), 0.0)
         return y_norm, median, mad, stats
 
     def forward(
@@ -780,17 +885,30 @@ class UniCOREEG(nn.Module):
         enable_residual: bool = True,
         coords: Tensor | None = None,
         coords_mask: Tensor | None = None,
+        channel_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
-        y_norm, median, mad, stats = self.robust_normalize(y)
-        h0 = self.stem(y_norm)
-        token_outputs = self.tokenizer(y_norm, h0, stats, metadata)
-        neural_features = self.content_encoder(h0)
+        if y.ndim != 3:
+            raise ValueError(f"y must have shape (batch, channels, time), got {tuple(y.shape)}")
+        batch, channels, length = y.shape
+        if channel_mask is None:
+            channel_mask = torch.ones(batch, channels, dtype=torch.bool, device=y.device)
+        elif channel_mask.shape != (batch, channels):
+            raise ValueError(f"channel_mask must have shape {(batch, channels)}, got {tuple(channel_mask.shape)}")
+        if not channel_mask.bool().any(dim=-1).all():
+            raise ValueError("每个样本至少要有一个有效 EEG 通道")
+        channel_mask = channel_mask.bool()
+        y_norm, median, mad, stats = self.robust_normalize(y, channel_mask)
+        flat_y = y_norm.reshape(batch * channels, 1, length)
+        h0 = self.stem(flat_y).reshape(batch, channels, self.config.base_channels, length)
+        token_outputs = self.tokenizer(y_norm, h0, stats, metadata, coords, coords_mask, channel_mask)
+        flat_features = self.content_encoder(h0.reshape(batch * channels, self.config.base_channels, length))
+        neural_features = [item.reshape(batch, channels, item.size(1), item.size(-1)) for item in flat_features]
         observations = self.observations(y_norm)
 
         # --- 空间投影：只调制 cardiac 与 ocular_drift 两路观测（T1.3）---
         spatial_weights = None
         if self.config.use_spatial:
-            spatial_weights = self.spatial(y_norm, coords, coords_mask)  # (B, C, 1)
+            spatial_weights = self.spatial(y_norm, coords, coords_mask, channel_mask)  # (B, C, 1)
             modulation = self.spatial.build_modulation(spatial_weights, observations[0])
             observations = list(observations)
             for index in SPATIAL_MODULATED_INDICES:
@@ -807,13 +925,14 @@ class UniCOREEG(nn.Module):
         if disabled_experts is not None:
             known_weights = known_weights * (~disabled_experts[:, :-1].bool()).to(known_weights.dtype)
         known_weights = known_weights / known_weights.sum(dim=-1, keepdim=True).clamp_min(1e-6)
-        unknown_inputs = [
-            feature - (known_weights[:, :, None, None] * torch.stack([expert[level] for expert in known_features], dim=1)).sum(dim=1)
-            for level, feature in enumerate(neural_features)
-        ]
+        unknown_inputs = []
+        for level, feature in enumerate(neural_features):
+            stacked = torch.stack([expert[level] for expert in known_features], dim=2)
+            weights = known_weights[:, None, :, None, None]
+            unknown_inputs.append(feature - (weights * stacked).sum(dim=2))
         unknown_features = self.experts[-1](unknown_inputs, token_outputs["tokens"][:, -1], observations[-1])
         expert_features = known_features + [unknown_features]
-        unknown_logit, unknown_severity, unknown_priority = self.unknown_detector(unknown_inputs[0])
+        unknown_logit, unknown_severity, unknown_priority = self.unknown_detector(unknown_inputs[0], channel_mask)
         token_outputs["probability_logits"] = torch.cat((token_outputs["probability_logits"][:, :-1], unknown_logit[:, None]), dim=-1)
         token_outputs["probabilities"] = torch.sigmoid(token_outputs["probability_logits"])
         token_outputs["severities"] = torch.cat((token_outputs["severities"][:, :-1], unknown_severity[:, None]), dim=-1)
@@ -822,20 +941,26 @@ class UniCOREEG(nn.Module):
             token_outputs["probabilities"].unsqueeze(-1) * token_outputs["tokens"]
         ).sum(dim=1) / token_outputs["probabilities"].sum(dim=1, keepdim=True).clamp_min(1e-4)
         routing = self.router(token_outputs, route_mode, oracle_labels, disabled_experts)
-        purified, gate_mean = self.gating(neural_features, expert_features, routing["route"], token_outputs["aggregate"])
+        purified, gate_mean = self.gating(neural_features, expert_features, routing["route"], token_outputs["aggregate"], channel_mask)
         coarse_clean, components, artifact_sum = self.coarse_decoder(purified, expert_features, routing["route"])
         decomp_error = y_norm - coarse_clean - artifact_sum
         if enable_residual:
             residual = self.residual_refiner(
-                torch.cat((y_norm, coarse_clean, artifact_sum, decomp_error), dim=1),
+                torch.stack((y_norm, coarse_clean, artifact_sum, decomp_error), dim=2),
                 token_outputs["aggregate"],
                 token_outputs["probabilities"].max(dim=-1).values,
                 token_outputs["severities"].mean(dim=-1),
             )
         else:
             residual = torch.zeros_like(y_norm)
-        identity_strength = self.identity_gate(y_norm, token_outputs["probabilities"], artifact_sum, residual, routing["bypass"])
+        identity_strength = self.identity_gate(y_norm, token_outputs["probabilities"], artifact_sum, residual, routing["bypass"], channel_mask)
         clean_norm = y_norm + identity_strength * (coarse_clean + residual - y_norm)
+        valid = channel_mask.unsqueeze(-1)
+        clean_norm = clean_norm.masked_fill(~valid, 0.0)
+        coarse_clean = coarse_clean.masked_fill(~valid, 0.0)
+        residual = residual.masked_fill(~valid, 0.0)
+        artifact_sum = artifact_sum.masked_fill(~valid, 0.0)
+        components = components.masked_fill(~valid.unsqueeze(1), 0.0)
         outputs: dict[str, Tensor] = {
             "clean": clean_norm * mad + median,
             "clean_norm": clean_norm,
@@ -848,6 +973,7 @@ class UniCOREEG(nn.Module):
             "median": median,
             "mad": mad,
             "stats": stats,
+            "channel_mask": channel_mask,
             **token_outputs,
             **routing,
         }

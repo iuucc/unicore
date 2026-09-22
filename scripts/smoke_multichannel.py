@@ -155,6 +155,34 @@ def run_one(
     return record
 
 
+def run_shared_checkpoint(args: argparse.Namespace, device: torch.device) -> list[dict[str, Any]]:
+    """Use one model/state_dict for every C, without optimizer updates between inputs."""
+    model = UniCOREEG(
+        UniCOREEGConfig(in_channels=1, sample_rate=args.sample_rate, window_size=args.length)
+    ).to(device).eval()
+    parameter_count = count_parameters(model)
+    records: list[dict[str, Any]] = []
+    for channels in args.channels:
+        batch = build_batch(args, channels, device)
+        with torch.no_grad():
+            output = model(
+                batch["noisy"],
+                metadata=batch["metadata"],
+                coords=batch.get("coords"),
+                channel_mask=torch.ones(batch["noisy"].shape[:2], dtype=torch.bool, device=device),
+            )
+        records.append({
+            "channels": channels,
+            "status": "ok" if tuple(output["clean"].shape) == tuple(batch["noisy"].shape) else "shape_error",
+            "output_shape": list(output["clean"].shape),
+            "parameters": parameter_count,
+        })
+    del model
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return records
+
+
 def main() -> None:
     args = parse_args()
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
@@ -176,6 +204,8 @@ def main() -> None:
         print("提示：CPU 上 bf16 走的是 float32 路径（本机 CPU 的 FFT 不支持 bf16）")
 
     results: list[dict[str, Any]] = []
+    shared_results = run_shared_checkpoint(args, device)
+    print("shared checkpoint:", ", ".join(f"C={item['channels']}:{item['status']}" for item in shared_results))
     print(
         f"device={device} precision={active['precision']} batch={args.batch_size} "
         f"length={args.length} montage={args.montage}"
@@ -201,7 +231,9 @@ def main() -> None:
         "steps": args.steps,
         "montage": args.montage,
         "results": results,
+        "shared_checkpoint": shared_results,
         "all_ok": not failures,
+        "shared_checkpoint_all_ok": all(item["status"] == "ok" for item in shared_results),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
