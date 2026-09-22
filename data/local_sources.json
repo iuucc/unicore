@@ -1,0 +1,46 @@
+{
+  "physiomotion": {
+    "path": "D:/codexwork/eeg/data/physiomotion",
+    "role": ["real_artifact_routing", "motion", "ocular", "myogenic", "unseen_combinations"]
+  },
+  "bci2a": {
+    "path": "D:/codexwork/eeg/data/bci2a",
+    "role": ["clean_preservation", "motor_imagery_downstream"]
+  },
+  "bci2b": {
+    "path": "D:/codexwork/eeg/data/bci2b",
+    "role": ["clean_preservation", "motor_imagery_downstream"]
+  },
+  "openbmi": {
+    "path": "D:/codexwork/eeg/data/openbmi",
+    "role": ["clean_preservation", "motor_imagery_downstream"]
+  },
+  "physionet_mi": {
+    "path": "D:/codexwork/eeg/data/physionet_mi",
+    "role": ["clean_preservation", "motor_imagery_downstream"]
+  },
+  "cho_gigadb": {
+    "path": "D:/codexwork/eeg/data/cho_gigadb",
+    "role": ["clean_preservation", "motor_imagery_downstream"]
+  },
+  "chbmit": {
+    "path": "D:/codexwork/eeg/data/chbmit",
+    "role": ["spike_negative_control", "event_preservation"]
+  },
+  "cap_sleep": {
+    "path": "D:/codexwork/eeg/data/cap_sleep",
+    "role": ["sleep_event_negative_control", "downstream_sleep"]
+  },
+  "sleep_edfx": {
+    "path": "D:/codexwork/eeg/data/sleep_edfx",
+    "role": ["sleep_event_negative_control", "downstream_sleep"]
+  },
+  "ds002094": {
+    "path": "D:/codexwork/eeg/data/ds002094",
+    "role": ["tms_transient_stress_test", "unknown_evaluation"]
+  },
+  "faced": {
+    "path": "D:/codexwork/eeg/data/faced/nm000112",
+    "role": ["clean_preservation", "affective_downstream"]
+  }
+}

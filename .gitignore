@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+runs/
+checkpoints/
+data/raw/
+data/download_manifest.json
+*.npy
