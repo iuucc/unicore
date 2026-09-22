@@ -43,6 +43,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--length", type=int, default=1000)
     parser.add_argument("--sample-rate", type=int, default=500)
     parser.add_argument("--steps", type=int, default=3, help="每个 C 跑几步，取耗时中位数")
+    parser.add_argument("--cpu-threads", type=int, default=4,
+                        help="限制合成样本生成的 CPU 线程数，避免小 smoke 被线程启动开销拖慢")
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--use-public-sources", action="store_true")
@@ -67,7 +69,9 @@ def build_batch(args: argparse.Namespace, channels: int, device: torch.device) -
             )
         kwargs["montage_coords"] = spec.coords
     dataset = SyntheticEEGDataset(
-        samples=max(args.batch_size, 16),
+        # Smoke only consumes one batch; synthesizing extra records adds startup
+        # time without strengthening the forward/backward contract being checked.
+        samples=max(args.batch_size, 1),
         channels=channels,
         length=args.length,
         sample_rate=args.sample_rate,
@@ -111,11 +115,21 @@ def run_one(
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
             started = time.perf_counter()
+            channel_mask = batch.get("channel_mask")
+            if channel_mask is None:
+                channel_mask = torch.ones(
+                    batch["noisy"].shape[:2], dtype=torch.bool, device=device
+                )
+            model_inputs = {
+                "metadata": batch.get("metadata"),
+                "coords": batch.get("coords"),
+                "channel_mask": channel_mask,
+            }
             if autocast is None:
-                outputs = model(batch["noisy"])
+                outputs = model(batch["noisy"], **model_inputs)
             else:
                 with autocast:
-                    outputs = model(batch["noisy"])
+                    outputs = model(batch["noisy"], **model_inputs)
             loss, logs = criterion(outputs, batch)
             loss.sum().backward()
             optimizer.step()
@@ -177,6 +191,7 @@ def run_shared_checkpoint(args: argparse.Namespace, device: torch.device) -> lis
             "output_shape": list(output["clean"].shape),
             "parameters": parameter_count,
         })
+        print(f"shared checkpoint C={channels}: {records[-1]['status']}", flush=True)
     del model
     if device.type == "cuda":
         torch.cuda.empty_cache()
@@ -185,6 +200,7 @@ def run_shared_checkpoint(args: argparse.Namespace, device: torch.device) -> lis
 
 def main() -> None:
     args = parse_args()
+    torch.set_num_threads(max(args.cpu_threads, 1))
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
     # configure_runtime 期望拿到**整份配置**（它自己会取 `runtime` 段）；
     # 直接传扁平的 runtime 字典会被静默忽略并退回默认值（踩过一次）。
@@ -205,7 +221,7 @@ def main() -> None:
 
     results: list[dict[str, Any]] = []
     shared_results = run_shared_checkpoint(args, device)
-    print("shared checkpoint:", ", ".join(f"C={item['channels']}:{item['status']}" for item in shared_results))
+    print("shared checkpoint:", ", ".join(f"C={item['channels']}:{item['status']}" for item in shared_results), flush=True)
     print(
         f"device={device} precision={active['precision']} batch={args.batch_size} "
         f"length={args.length} montage={args.montage}"
@@ -219,7 +235,7 @@ def main() -> None:
         print(
             f"{channels:5d} {record.get('parameters', 0):12,d} {record['status']:>7s} "
             f"{(f'{step:.1f}' if step else '-'):>9s} {(f'{peak:.2f}' if peak else '-'):>8s}  "
-            f"{record.get('error', '')}"
+            f"{record.get('error', '')}", flush=True
         )
 
     failures = [item for item in results if item["status"] != "ok"]
