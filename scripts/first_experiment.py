@@ -13,6 +13,13 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+# Allow the documented ``python scripts/first_experiment.py`` invocation from
+# the repository root to import the in-tree package without requiring an
+# editable install or an externally configured PYTHONPATH.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig, paths
 from unicore_eeg.config import resolve_settings
 from unicore_eeg.batching import collate_variable_channels
