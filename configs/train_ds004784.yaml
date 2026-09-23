@@ -1,0 +1,15 @@
+extends: base.yaml
+name: train_ds004784
+dataset:
+  name: ds004784_aligned
+  root: "@paths.RAW_ROOT/ds004784"
+  split: train
+  tasks: [Brain, Eyes, Facial, Neck, Walking, All]
+  alignment_dir: "@paths.RUNS_ROOT/ds004784/alignment"
+training:
+  epochs: 10
+  seed: 17
+loss:
+  diversity_weight: 0.05
+  load_balance_weight: 0.02
+  hard_negative_weight: 0.05

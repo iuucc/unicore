@@ -1,0 +1,2 @@
+metric,mean,std,n,scope
+multichannel_smoke_status,1,0,5,smoke_only

@@ -1,0 +1,6 @@
+channels,status,loss_first,ms_per_step,peak_memory_gib,metric_scope
+1,ok,3.936508,43823.77,0.3077,multichannel_smoke
+3,ok,3.816129,45342.53,0.3085,multichannel_smoke
+22,ok,3.269833,32716.08,1.3876,multichannel_smoke
+64,ok,4.744788,36448.21,3.8232,multichannel_smoke
+128,ok,2.682446,33819.27,7.5291,multichannel_smoke

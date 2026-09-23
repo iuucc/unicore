@@ -13,6 +13,7 @@ T0.7 的三处改动（手册 §8 T0.7）：
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,9 +22,9 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from unicore_eeg import UniCOREEG, UniCOREEGConfig, paths
+from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig, paths
 from unicore_eeg.config import resolve_settings
-from unicore_eeg.losses import UniCORELoss
+from unicore_eeg.losses import UniCORELoss, UniCORELossWeights
 from unicore_eeg.manifest import write_run_manifest
 from unicore_eeg.model import count_parameters
 from unicore_eeg.runtime import configure_runtime, dataloader_kwargs
@@ -93,6 +94,8 @@ def main() -> None:
         in_channels=args.channels,
         sample_rate=args.sample_rate,
         window_size=args.length,
+        domain_calibration_enabled=bool((run_config or {}).get("domain_calibration", {}).get("enabled", False)) if run_config else False,
+        domain_calibration_hidden=int((run_config or {}).get("domain_calibration", {}).get("hidden", 32)) if run_config else 32,
     )
     model: torch.nn.Module = UniCOREEG(config).to(device)
     if runtime["torch_compile"]:
@@ -124,10 +127,17 @@ def main() -> None:
     loader_kwargs = dataloader_kwargs(args.batch_size, args.num_workers, device)
     train_loader = DataLoader(train_set, shuffle=True, **loader_kwargs)
     val_loader = DataLoader(val_set, shuffle=False, **loader_kwargs)
-    loss_fn = UniCORELoss()
+    loss_cfg = (run_config or {}).get("loss", {}) if run_config else {}
+    loss_fn = UniCORELoss(UniCORELossWeights(
+        diversity=float(loss_cfg.get("diversity_weight", 0.05)),
+        load_balance=float(loss_cfg.get("load_balance_weight", 0.02)),
+        hard_negative=float(loss_cfg.get("hard_negative_weight", 0.05)),
+    ))
+    metadata_dropout = float((run_config or {}).get("training", {}).get("metadata_dropout", 0.10)) if run_config else 0.10
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scaler = torch.amp.GradScaler("cuda", enabled=False)
     best_val = float("inf")
+    usage_history: list[dict[str, object]] = []
 
     raw_model = model.module if isinstance(model, torch.nn.DataParallel) else model
     print(f"device={device} gpus={torch.cuda.device_count() if torch.cuda.is_available() else 0}")
@@ -162,9 +172,16 @@ def main() -> None:
     for epoch in range(1, args.epochs + 1):
         model.train()
         train_logs: dict[str, float] = {}
+        usage_sum = torch.zeros(len(ARTIFACT_NAMES), device=device)
+        score_sum = torch.zeros(len(ARTIFACT_NAMES), device=device)
+        before_values: list[float] = []
+        after_values: list[float] = []
         progress = tqdm(train_loader, desc=f"epoch {epoch}/{args.epochs} train")
         for batch in progress:
             batch = move_batch(batch, device)
+            if metadata_dropout > 0:
+                metadata_mask = torch.rand_like(batch["metadata"]) >= metadata_dropout
+                batch["metadata"] = batch["metadata"] * metadata_mask
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=device.type == "cuda"):
                 outputs = model(
@@ -181,7 +198,15 @@ def main() -> None:
             scaler.step(optimizer)
             scaler.update()
             for key, value in logs.items():
-                train_logs[key] = train_logs.get(key, 0.0) + float(value)
+                if key == "expert_usage":
+                    usage_sum += value
+                elif key == "routing_confusion_before":
+                    before_values.append(float(value))
+                elif key == "routing_confusion_after":
+                    after_values.append(float(value))
+                else:
+                    train_logs[key] = train_logs.get(key, 0.0) + float(value)
+            score_sum += outputs["route_scores"].detach().float().mean(dim=0)
             progress.set_postfix(loss=f"{float(logs['loss']):.3f}")
 
         model.eval()
@@ -210,6 +235,14 @@ def main() -> None:
         if val_loss < best_val:
             best_val = val_loss
             torch.save(checkpoint, args.out / "best.pt")
+        usage_history.append({
+            "epoch": epoch,
+            "usage_probability": (usage_sum / max(len(train_loader), 1)).detach().cpu().tolist(),
+            "route_score_mean": (score_sum / max(len(train_loader), 1)).detach().cpu().tolist(),
+            "routing_matrix_before_cardiac_to_ocular": sum(before_values) / max(len(before_values), 1),
+            "routing_matrix_after_cardiac_to_ocular": sum(after_values) / max(len(after_values), 1),
+        })
+        (args.out / "expert_usage.json").write_text(json.dumps(usage_history, indent=2), encoding="utf-8")
 
     print(f"done: best_val={best_val:.4f} out={args.out}")
 

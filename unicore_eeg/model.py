@@ -36,6 +36,8 @@ class UniCOREEGConfig:
     clean_threshold: float = 0.50
     bypass_source: str = "presence_head"
     router_temperature: float = 1.0
+    domain_calibration_enabled: bool = False
+    domain_calibration_hidden: int = 32
     eps: float = 1e-5
     # ---- 空间投影（T1.3）----
     use_spatial: bool = True
@@ -602,6 +604,7 @@ class SparseRouter(nn.Module):
         mode: str = "learned",
         oracle_labels: Tensor | None = None,
         disabled_experts: Tensor | None = None,
+        temperature_override: Tensor | None = None,
     ) -> dict[str, Tensor]:
         probabilities = tokens["probabilities"]
         if self.bypass_source == "presence_head":
@@ -617,8 +620,11 @@ class SparseRouter(nn.Module):
                 disabled_experts.bool(), 0.0
             ) if disabled_experts is not None else probabilities
             artifact_presence = masked_probabilities.amax(dim=-1)
+        temperature = max(self.temperature, 1e-4) if temperature_override is None else temperature_override
+        if isinstance(temperature, Tensor):
+            temperature = temperature.view(-1, 1, 1).clamp_min(1e-4)
         scores = probabilities * torch.sigmoid(tokens["severities"]) * F.softmax(
-            tokens["priorities"] / max(self.temperature, 1e-4), dim=-1
+            tokens["priorities"] / temperature, dim=-1
         )
         enabled = torch.ones_like(scores, dtype=torch.bool)
         if disabled_experts is not None:
@@ -878,6 +884,11 @@ class UniCOREEG(nn.Module):
         self.stem = SharedStem(self.config.base_channels)
         self.tokenizer = ArtifactTokenizer(self.config)
         self.router = SparseRouter(self.config)
+        self.domain_calibration = nn.Sequential(
+            nn.Linear(self.config.token_dim + self.config.metadata_dim, self.config.domain_calibration_hidden),
+            nn.SiLU(),
+            nn.Linear(self.config.domain_calibration_hidden, 1),
+        )
         self.content_encoder = ContentEncoder(self.config.base_channels)
         self.experts = nn.ModuleList([
             ArtifactExpert(dims, self.config.token_dim, name) for name in ARTIFACT_NAMES
@@ -967,7 +978,12 @@ class UniCOREEG(nn.Module):
         token_outputs["aggregate"] = (
             token_outputs["probabilities"].unsqueeze(-1) * token_outputs["tokens"]
         ).sum(dim=1) / token_outputs["probabilities"].sum(dim=1, keepdim=True).clamp_min(1e-4)
-        routing = self.router(token_outputs, route_mode, oracle_labels, disabled_experts)
+        if self.config.domain_calibration_enabled and metadata is not None:
+            domain_input = torch.cat((token_outputs["aggregate"], metadata), dim=-1)
+            domain_temperature = (1.0 + 0.5 * torch.tanh(self.domain_calibration(domain_input).squeeze(-1)))
+        else:
+            domain_temperature = None
+        routing = self.router(token_outputs, route_mode, oracle_labels, disabled_experts, domain_temperature)
         purified, gate_mean = self.gating(neural_features, expert_features, routing["route"], token_outputs["aggregate"], channel_mask)
         coarse_clean, components, artifact_sum = self.coarse_decoder(purified, expert_features, routing["route"])
         decomp_error = y_norm - coarse_clean - artifact_sum
@@ -1001,6 +1017,10 @@ class UniCOREEG(nn.Module):
             "mad": mad,
             "stats": stats,
             "channel_mask": channel_mask,
+            "domain_temperature": domain_temperature if domain_temperature is not None else token_outputs["probabilities"].new_ones(token_outputs["probabilities"].size(0)),
+            "expert_feature_vectors": torch.stack(
+                [levels[-1].mean(dim=(1, 3)) for levels in expert_features], dim=1
+            ),
             **token_outputs,
             **routing,
         }

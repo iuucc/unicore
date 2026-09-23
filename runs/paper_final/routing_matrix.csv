@@ -1,0 +1,3 @@
+scope,status,source
+formal_gate_a,fail,reports/gate1_shared_weights_v7/GATE_A_C1_PARTIAL.md
+multichannel_smoke,not_measured,runs/multichannel/summary.json

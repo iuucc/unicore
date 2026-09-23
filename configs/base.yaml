@@ -60,6 +60,17 @@ dataloader:
   grad_accum_steps: 1       # 需要更大等效 batch 时改这里，不是改 batch_size
   drop_last: true
 
+loss:
+  diversity_weight: 0.05
+  load_balance_weight: 0.02
+  hard_negative_weight: 0.05
+  # Set all three weights to 0 for the corresponding ablation.
+training:
+  metadata_dropout: 0.10
+domain_calibration:
+  enabled: true
+  hidden: 32
+
 # ---------------- 路径（一律走符号引用，禁止写死）----------------
 paths:
   raw_root: "@paths.RAW_ROOT"

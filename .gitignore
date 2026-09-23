@@ -11,6 +11,8 @@ checkpoints/
 # 直接用 `runs/` 会连 .gitkeep 一起忽略，故改为 `runs/*` + 反向豁免。
 runs/*
 !runs/.gitkeep
+!runs/paper_final/
+!runs/paper_final/**
 
 # 大型原始数据不入版本控制；数据侧的"登记与校验"文件必须入控制，
 # 否则 T0.2 的校验清单与 §5.3 的登记要求无法追溯。

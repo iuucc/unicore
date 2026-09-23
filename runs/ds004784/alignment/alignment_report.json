@@ -1,0 +1,94 @@
+{
+  "root": "data\\raw\\ds004784",
+  "ground_truth": "data\\raw\\ds004784\\stimuli\\GTdata_croppedToRisingEdge.mat",
+  "source_groups": {
+    "brain": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "ocular": [
+      10,
+      11
+    ],
+    "neck_myogenic": [
+      12,
+      13,
+      14,
+      15
+    ],
+    "facial_myogenic": [
+      16,
+      17,
+      18,
+      19
+    ],
+    "trigger": [
+      20
+    ]
+  },
+  "records": [
+    {
+      "task": "Brain",
+      "eeg_samples": 182784,
+      "gt_samples": 153600,
+      "eeg_trigger_edge": null,
+      "gt_trigger_edge": 0,
+      "offset_samples": 0,
+      "valid_samples": 153600
+    },
+    {
+      "task": "Eyes",
+      "eeg_samples": 162304,
+      "gt_samples": 153600,
+      "eeg_trigger_edge": null,
+      "gt_trigger_edge": 0,
+      "offset_samples": 0,
+      "valid_samples": 153600
+    },
+    {
+      "task": "Facial",
+      "eeg_samples": 160256,
+      "gt_samples": 153600,
+      "eeg_trigger_edge": null,
+      "gt_trigger_edge": 0,
+      "offset_samples": 0,
+      "valid_samples": 153600
+    },
+    {
+      "task": "Neck",
+      "eeg_samples": 163840,
+      "gt_samples": 153600,
+      "eeg_trigger_edge": null,
+      "gt_trigger_edge": 0,
+      "offset_samples": 0,
+      "valid_samples": 153600
+    },
+    {
+      "task": "Walking",
+      "eeg_samples": 168448,
+      "gt_samples": 153600,
+      "eeg_trigger_edge": null,
+      "gt_trigger_edge": 0,
+      "offset_samples": 0,
+      "valid_samples": 153600
+    },
+    {
+      "task": "All",
+      "eeg_samples": 159232,
+      "gt_samples": 153600,
+      "eeg_trigger_edge": null,
+      "gt_trigger_edge": 0,
+      "offset_samples": 0,
+      "valid_samples": 153600
+    }
+  ],
+  "alignment_method": "trigger rising edge; zero offset when EEG trigger is unavailable"
+}

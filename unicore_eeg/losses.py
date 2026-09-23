@@ -22,6 +22,9 @@ class UniCORELossWeights:
     gate_sparse: float = 0.01
     unknown_energy: float = 0.02
     unknown_replacement: float = 0.05
+    diversity: float = 0.05
+    load_balance: float = 0.02
+    hard_negative: float = 0.05
 
 
 def _masked_mean(values: Tensor, mask: Tensor) -> Tensor:
@@ -162,6 +165,27 @@ class UniCORELoss(nn.Module):
         known_route = outputs["route"][:, :-1].amax(dim=-1)
         replacement = _masked_mean(F.relu(outputs["route"][:, -1] - known_route + 0.05), known_present)
 
+        # Expert diversity uses the pooled feature emitted by each expert.  A
+        # positive cosine similarity is penalized; anti-correlated experts are
+        # allowed and are useful for complementary artifact mechanisms.
+        expert_vectors = outputs.get("expert_feature_vectors")
+        if expert_vectors is not None:
+            stacked = F.normalize(expert_vectors.float(), dim=-1)
+            similarities = torch.matmul(stacked, stacked.transpose(1, 2))
+            off_diagonal = ~torch.eye(stacked.size(1), device=stacked.device, dtype=torch.bool)
+            diversity = F.relu(similarities[:, off_diagonal]).mean()
+        else:
+            diversity = outputs["probabilities"].new_zeros(())
+
+        usage = outputs["route"].float().mean(dim=0)
+        target_usage = torch.full_like(usage, 1.0 / usage.numel())
+        load_balance = (usage - target_usage).square().mean()
+
+        cardiac = batch["labels"][:, 3].bool()
+        hard_negative = _masked_mean(
+            F.relu(outputs["route"][:, 1] - outputs["route"][:, 3]), cardiac
+        )
+
         total = (
             final
             + self.weights.coarse * coarse
@@ -173,6 +197,9 @@ class UniCORELoss(nn.Module):
             + self.weights.gate_sparse * outputs["gate_mean"]
             + self.weights.unknown_energy * unknown_energy
             + self.weights.unknown_replacement * replacement
+            + self.weights.diversity * diversity
+            + self.weights.load_balance * load_balance
+            + self.weights.hard_negative * hard_negative
         )
         logs = {
             "loss": total.detach(),
@@ -185,5 +212,11 @@ class UniCORELoss(nn.Module):
             "clean_presence": clean_presence.detach(),
             "unknown_energy": unknown_energy.detach(),
             "unknown_replacement": replacement.detach(),
+            "diversity": diversity.detach(),
+            "load_balance": load_balance.detach(),
+            "hard_negative": hard_negative.detach(),
+            "expert_usage": usage.detach(),
+            "routing_confusion_before": (outputs["route_scores"].argmax(dim=-1) == 1).float().masked_select(cardiac).mean().detach(),
+            "routing_confusion_after": (outputs["route"].argmax(dim=-1) == 1).float().masked_select(cardiac).mean().detach(),
         }
         return total, logs

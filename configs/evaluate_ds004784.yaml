@@ -1,0 +1,4 @@
+extends: train_ds004784.yaml
+name: evaluate_ds004784
+dataset:
+  split: test
