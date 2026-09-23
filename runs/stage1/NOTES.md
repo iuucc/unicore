@@ -236,3 +236,14 @@ python scripts/build_montages.py --report     # 逐 montage 解析覆盖率自�
 **产出**：`scripts/smoke_multichannel.py`、`scripts/regress_multichannel.py`、`runs/_regress/regress_multichannel.md`
 
 （待执行）
+
+---
+
+## Gate 1 GPU 重验证（2026-09-23）
+
+- 环境：`D:\Anaconda_envs\envs\unicore-eeg\python.exe`，Python 3.11.16，torch 2.11.0+cu128，RTX 5080，CUDA_VISIBLE_DEVICES=0，bf16，单卡，无 DDP/torch.compile。
+- 新增公共源池明确 `train/val/test=60/20/20` 源索引分割与交集单测；训练入口使用独立 train/validation 数据集和 seed。
+- 新增 `scripts/calibrate_routing.py`：validation 选择逐类阈值并输出 precision/recall/F1/AUROC/AUPRC/support/FPR/FNR/ECE/Brier；test 只用冻结阈值运行一次。
+- C=1 GPU 训练：4096 train、4 epochs；C=8 GPU 训练：1024 train、4 epochs。详细结果见 `reports/gate1_shared_weights/revalidation_20260923/`。
+- Gate 1：**FAIL**。C=1 test known macro-F1=0.2864、macro-AUROC=0.6479；C=8 test known macro-F1=0.2849、macro-AUROC=0.6013。阶段 2 不得开始。
+- 失败定位：harmonic/ocular 路由概率校准与判别能力不足；C=8 训练规模仍低于正式性能实验要求。
