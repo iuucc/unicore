@@ -1,0 +1,7 @@
+class,tn,fp,fn,tp
+harmonic,1000,0,100,0
+ocular_drift,890,110,96,4
+myogenic,980,20,37,63
+cardiac,927,73,61,39
+motion_transient,907,93,86,14
+unknown,584,16,366,234

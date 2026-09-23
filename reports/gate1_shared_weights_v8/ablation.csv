@@ -1,0 +1,5 @@
+variant,mode,metric,value,causal_training
+A_baseline_old_model,historical_or_forward_only,known_macro_f1,0.5683,no
+B_diversity_loss,single_forward_loss_ablation,total_loss,2.04826045,no
+C_load_balance,single_forward_loss_ablation,total_loss,2.04928279,no
+D_hard_negative,single_forward_loss_ablation,total_loss,2.04314542,no

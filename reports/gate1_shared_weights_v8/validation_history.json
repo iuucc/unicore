@@ -1,0 +1,13 @@
+{
+  "selection_metric": "known_macro_auroc",
+  "history": [
+    {
+      "epoch": 1.0,
+      "known_macro_auroc": 0.542042
+    },
+    {
+      "epoch": 2.0,
+      "known_macro_auroc": 0.618648
+    }
+  ]
+}
