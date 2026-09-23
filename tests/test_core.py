@@ -29,7 +29,7 @@ from unicore_eeg.ds004784 import task_to_labels
 from unicore_eeg.manifest import code_version_hash, git_state, write_run_manifest
 from unicore_eeg.model import ARTIFACT_NAMES, SparseRouter, UniCOREEGConfig, count_parameters
 from unicore_eeg.physiomotion import map_annotation
-from unicore_eeg.routing_metrics import masked_routing_metrics, masked_threshold_calibration
+from unicore_eeg.routing_metrics import masked_routing_metrics, masked_threshold_calibration, select_threshold
 from unicore_eeg.runtime import (
     TritonMissingError,
     check_ddp_allowed,
@@ -146,6 +146,13 @@ class RoutingMetricTests(unittest.TestCase):
         probabilities = np.asarray([[0.8, 0.9, 0.1, 0.1, 0.1, 0.1], [0.7, 0.8, 0.2, 0.1, 0.1, 0.1], [0.6, 0.7, 0.9, 0.1, 0.1, 0.1]], dtype=np.float32)
         thresholds = masked_threshold_calibration(labels, probabilities, max_fpr=0.0, grid=np.asarray([0.5, 0.85]))
         self.assertAlmostEqual(float(thresholds[0]), 0.85, places=6)
+
+    def test_threshold_search_uses_probability_midpoints(self) -> None:
+        y = np.asarray([1, 0, 0, 0, 0], dtype=np.float32)
+        p = np.asarray([0.24, 0.20, 0.19, 0.18, 0.17], dtype=np.float32)
+        selected = select_threshold(y, p, max_fpr=0.10)
+        self.assertAlmostEqual(selected["threshold"], 0.22, places=5)
+        self.assertAlmostEqual(selected["f1"], 1.0, places=6)
 
 
 class PathSourceTests(unittest.TestCase):

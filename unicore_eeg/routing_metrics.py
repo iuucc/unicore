@@ -25,6 +25,52 @@ def ece(probability: np.ndarray, target: np.ndarray, bins: int = 10) -> float:
     return result
 
 
+def threshold_candidates(probabilities: np.ndarray, grid: np.ndarray | None = None) -> np.ndarray:
+    """Return exact operating thresholds and adjacent midpoints.
+
+    Using the observed probabilities avoids missing a narrow FPR-feasible
+    interval between two coarse grid points.
+    """
+    if grid is not None:
+        return np.unique(np.asarray(grid, dtype=np.float64))
+    values = np.unique(np.asarray(probabilities, dtype=np.float64))
+    if values.size == 0:
+        return np.asarray([0.5], dtype=np.float64)
+    midpoints = (values[:-1] + values[1:]) / 2.0
+    return np.unique(np.concatenate((np.asarray([0.0]), values, midpoints, np.asarray([1.0]))))
+
+
+def select_threshold(
+    labels: np.ndarray,
+    probabilities: np.ndarray,
+    max_fpr: float | None = 0.10,
+    grid: np.ndarray | None = None,
+) -> dict[str, float]:
+    from sklearn.metrics import f1_score
+
+    y = np.asarray(labels, dtype=np.float32)
+    p = np.asarray(probabilities, dtype=np.float32)
+    candidates = threshold_candidates(p, grid)
+    scored: list[dict[str, float]] = []
+    for candidate in candidates:
+        prediction = p >= candidate
+        negatives = y == 0
+        fp = float((prediction & negatives).sum())
+        tn = float((~prediction & negatives).sum())
+        fpr = fp / max(fp + tn, 1.0)
+        scored.append({
+            "threshold": float(candidate),
+            "f1": float(f1_score(y, prediction, zero_division=0)),
+            "fpr": fpr,
+        })
+    feasible = [row for row in scored if max_fpr is None or row["fpr"] <= max_fpr]
+    if feasible:
+        pool = feasible
+    else:
+        pool = scored
+    return max(pool, key=lambda row: (row["f1"], -row["fpr"], -row["threshold"]))
+
+
 def masked_threshold_calibration(
     labels: np.ndarray,
     probabilities: np.ndarray,
@@ -32,13 +78,10 @@ def masked_threshold_calibration(
     grid: np.ndarray | None = None,
     max_fpr: float | None = 0.10,
 ) -> np.ndarray:
-    from sklearn.metrics import f1_score
-
     labels = np.asarray(labels, dtype=np.float32)
     probabilities = np.asarray(probabilities, dtype=np.float32)
     mask = expected_label_mask(labels) if label_mask is None else np.asarray(label_mask, dtype=bool)
     thresholds = []
-    grid = np.linspace(0.05, 0.95, 19) if grid is None else grid
     for index in range(labels.shape[1]):
         valid = mask[:, index]
         if not valid.any():
@@ -46,17 +89,7 @@ def masked_threshold_calibration(
             continue
         y = labels[valid, index]
         p = probabilities[valid, index]
-        candidates = []
-        for candidate in grid:
-            prediction = p >= candidate
-            negatives = y == 0
-            fp = float((prediction & negatives).sum())
-            tn = float((~prediction & negatives).sum())
-            fpr = fp / max(fp + tn, 1.0)
-            candidates.append((float(candidate), fpr, float(f1_score(y, prediction, zero_division=0))))
-        feasible = [row for row in candidates if max_fpr is None or row[1] <= max_fpr]
-        pool = feasible if feasible else candidates
-        thresholds.append(max(pool, key=lambda row: (row[2], -row[1], row[0]))[0])
+        thresholds.append(select_threshold(y, p, max_fpr=max_fpr, grid=grid)["threshold"])
     return np.asarray(thresholds, dtype=np.float32)
 
 
@@ -93,23 +126,7 @@ def masked_routing_metrics(
         tn = float(((z == 0) & (y == 0)).sum())
         operating_points: dict[str, object] = {}
         for limit in (0.05, 0.10):
-            feasible = []
-            for candidate in np.linspace(0.01, 0.99, 99):
-                candidate_pred = p >= candidate
-                candidate_fp = float(((candidate_pred == 1) & (y == 0)).sum())
-                candidate_tn = float(((candidate_pred == 0) & (y == 0)).sum())
-                fpr = candidate_fp / max(candidate_fp + candidate_tn, 1.0)
-                if fpr <= limit:
-                    feasible.append(
-                        {
-                            "threshold": float(candidate),
-                            "f1": float(f1_score(y, candidate_pred, zero_division=0)),
-                            "fpr": fpr,
-                        }
-                    )
-            operating_points[f"fpr_le_{limit:.2f}"] = (
-                max(feasible, key=lambda item: item["f1"]) if feasible else "not feasible"
-            )
+            operating_points[f"fpr_le_{limit:.2f}"] = select_threshold(y, p, max_fpr=limit)
         rows.append(
             {
                 "class": name,

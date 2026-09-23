@@ -558,6 +558,11 @@ def main() -> None:
         if best_path.exists():
             best_checkpoint = torch.load(best_path, map_location=device)
             model.load_state_dict(best_checkpoint["model"])
+            # The state dict does not contain dataclass routing thresholds.
+            # Restore the validation-frozen values selected for this checkpoint.
+            restored_config = UniCOREEGConfig(**best_checkpoint["config"])
+            model.config.probability_thresholds = restored_config.probability_thresholds
+            model.router.probability_thresholds = restored_config.probability_thresholds
     if args.skip_eval:
         print("training complete; evaluation skipped (calibrate on validation before test)")
         return
