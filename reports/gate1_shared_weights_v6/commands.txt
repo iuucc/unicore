@@ -1,0 +1,4 @@
+$env:CUDA_VISIBLE_DEVICES = "0"
+$PY = "D:\Anaconda_envs\envs\unicore-eeg\python.exe"
+& $PY scripts/router_overfit.py --channels 1 --out reports/gate1_shared_weights_v6 --steps 300 --batch-size 8
+& $PY scripts/router_overfit.py --channels 8 --out reports/gate1_shared_weights_v6 --steps 300 --batch-size 8
