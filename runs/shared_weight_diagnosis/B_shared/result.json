@@ -1,0 +1,498 @@
+{
+  "mode": "shared_baseline",
+  "class_counts": {
+    "harmonic": 342,
+    "ocular_drift": 342,
+    "myogenic": 342,
+    "cardiac": 341,
+    "motion_transient": 341,
+    "unknown": 2046
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "total_loss": 1.8256329869666295,
+      "reconstruction_loss": 0.6986536821078139,
+      "artifact_classification_loss": 0.8881128886986894,
+      "grad_norm": 0.9050743574636024,
+      "router_entropy": 0.4277506484152559,
+      "expert_activation_matrix": [
+        0.013614320196211338,
+        0.0024072907399386168,
+        0.09700781852006912,
+        0.06513168662786484,
+        0.0573405995965004,
+        0.7001708149909973
+      ],
+      "routing_matrix": [
+        [
+          42.0,
+          0.0,
+          202.0,
+          0.0,
+          0.0,
+          440.0
+        ],
+        [
+          15.0,
+          0.0,
+          94.0,
+          0.0,
+          0.0,
+          233.0
+        ],
+        [
+          22.0,
+          0.0,
+          116.0,
+          0.0,
+          0.0,
+          204.0
+        ],
+        [
+          22.0,
+          0.0,
+          78.0,
+          0.0,
+          0.0,
+          241.0
+        ],
+        [
+          21.0,
+          0.0,
+          106.0,
+          0.0,
+          0.0,
+          214.0
+        ],
+        [
+          142.0,
+          0.0,
+          543.0,
+          0.0,
+          0.0,
+          1361.0
+        ]
+      ],
+      "validation_known_macro_f1": 0.0,
+      "validation_known_macro_auroc": 0.48578099999999996,
+      "validation_per_class_f1": {
+        "harmonic": 0.0,
+        "ocular_drift": 0.0,
+        "myogenic": 0.0,
+        "cardiac": 0.0,
+        "motion_transient": 0.0,
+        "unknown": 0.6666666666666666
+      }
+    },
+    {
+      "epoch": 2,
+      "total_loss": 1.5821857863699484,
+      "reconstruction_loss": 0.6622025424625442,
+      "artifact_classification_loss": 0.7771897859740675,
+      "grad_norm": 1.0659333035262704,
+      "router_entropy": 0.27884163722857286,
+      "expert_activation_matrix": [
+        0.013394039124250412,
+        0.007956352084875107,
+        0.06591065973043442,
+        0.05538021773099899,
+        0.03934178873896599,
+        0.8180168867111206
+      ],
+      "routing_matrix": [
+        [
+          0.0,
+          0.0,
+          43.0,
+          57.0,
+          1.0,
+          583.0
+        ],
+        [
+          0.0,
+          0.0,
+          28.0,
+          39.0,
+          0.0,
+          275.0
+        ],
+        [
+          0.0,
+          0.0,
+          149.0,
+          0.0,
+          4.0,
+          189.0
+        ],
+        [
+          0.0,
+          0.0,
+          2.0,
+          25.0,
+          0.0,
+          314.0
+        ],
+        [
+          0.0,
+          0.0,
+          49.0,
+          0.0,
+          3.0,
+          289.0
+        ],
+        [
+          0.0,
+          0.0,
+          150.0,
+          50.0,
+          29.0,
+          1817.0
+        ]
+      ],
+      "validation_known_macro_f1": 0.20114109957708576,
+      "validation_known_macro_auroc": 0.776955,
+      "validation_per_class_f1": {
+        "harmonic": 0.0,
+        "ocular_drift": 0.2768166089965398,
+        "myogenic": 0.7288888888888889,
+        "cardiac": 0.0,
+        "motion_transient": 0.0,
+        "unknown": 0.6666666666666666
+      }
+    },
+    {
+      "epoch": 3,
+      "total_loss": 1.353837784270794,
+      "reconstruction_loss": 0.6486803812590259,
+      "artifact_classification_loss": 0.5548999006288093,
+      "grad_norm": 1.726466725095671,
+      "router_entropy": 0.42833303202662554,
+      "expert_activation_matrix": [
+        0.005913932342082262,
+        0.010314752347767353,
+        0.09396113455295563,
+        0.225887730717659,
+        0.030589232221245766,
+        0.6062862873077393
+      ],
+      "routing_matrix": [
+        [
+          53.0,
+          0.0,
+          0.0,
+          437.0,
+          0.0,
+          194.0
+        ],
+        [
+          23.0,
+          0.0,
+          0.0,
+          305.0,
+          0.0,
+          14.0
+        ],
+        [
+          0.0,
+          0.0,
+          323.0,
+          0.0,
+          0.0,
+          19.0
+        ],
+        [
+          4.0,
+          0.0,
+          0.0,
+          260.0,
+          0.0,
+          77.0
+        ],
+        [
+          0.0,
+          0.0,
+          104.0,
+          6.0,
+          0.0,
+          231.0
+        ],
+        [
+          30.0,
+          0.0,
+          129.0,
+          145.0,
+          0.0,
+          1742.0
+        ]
+      ],
+      "validation_known_macro_f1": 0.2948643579001297,
+      "validation_known_macro_auroc": 0.917239,
+      "validation_per_class_f1": {
+        "harmonic": 0.0,
+        "ocular_drift": 0.1282051282051282,
+        "myogenic": 0.794392523364486,
+        "cardiac": 0.0,
+        "motion_transient": 0.5517241379310345,
+        "unknown": 0.8371767994409504
+      }
+    },
+    {
+      "epoch": 4,
+      "total_loss": 1.1766447654941625,
+      "reconstruction_loss": 0.642741953071795,
+      "artifact_classification_loss": 0.3573173149461635,
+      "grad_norm": 2.3375906951246206,
+      "router_entropy": 0.2151434648324523,
+      "expert_activation_matrix": [
+        0.057574544101953506,
+        0.009425293654203415,
+        0.09988327324390411,
+        0.2308315485715866,
+        0.07189272344112396,
+        0.45510029792785645
+      ],
+      "routing_matrix": [
+        [
+          309.0,
+          20.0,
+          0.0,
+          318.0,
+          8.0,
+          29.0
+        ],
+        [
+          57.0,
+          8.0,
+          0.0,
+          277.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          335.0,
+          0.0,
+          2.0,
+          5.0
+        ],
+        [
+          16.0,
+          3.0,
+          0.0,
+          318.0,
+          1.0,
+          3.0
+        ],
+        [
+          6.0,
+          0.0,
+          73.0,
+          3.0,
+          182.0,
+          77.0
+        ],
+        [
+          93.0,
+          0.0,
+          38.0,
+          4.0,
+          2.0,
+          1909.0
+        ]
+      ],
+      "validation_known_macro_f1": 0.5405752942849336,
+      "validation_known_macro_auroc": 0.954229,
+      "validation_per_class_f1": {
+        "harmonic": 0.78125,
+        "ocular_drift": 0.0,
+        "myogenic": 0.8067226890756303,
+        "cardiac": 0.5163636363636364,
+        "motion_transient": 0.5985401459854015,
+        "unknown": 0.9844134536505332
+      }
+    }
+  ],
+  "test_summary": {
+    "known_macro_f1": 0.5231294916988585,
+    "known_macro_auroc": 0.9470320000000001,
+    "known_macro_auprc": 0.6851103943611807,
+    "six_class_macro_f1": 0.5993345873267901,
+    "macro_auroc": 0.9557681018518519,
+    "macro_auprc": 0.7374992289768064,
+    "unknown_f1": 0.9803600654664485,
+    "unknown_auroc": 0.9994486111111112,
+    "micro_f1": 0.7937608318890814
+  },
+  "test_metrics": [
+    {
+      "class": "harmonic",
+      "valid_samples": 1100,
+      "masked_samples": 100,
+      "precision": 0.7528089887640449,
+      "recall": 0.67,
+      "f1": 0.708994708994709,
+      "auroc": 0.96448,
+      "auprc": 0.7796575295161808,
+      "support": 100.0,
+      "false_positive_rate": 0.022,
+      "false_negative_rate": 0.33,
+      "ece": 0.13747848182408645,
+      "brier": 0.06643504649400711,
+      "operating_points": {
+        "fpr_le_0.05": {
+          "threshold": 0.490234375,
+          "f1": 0.7319587628865979,
+          "fpr": 0.023
+        },
+        "fpr_le_0.10": {
+          "threshold": 0.490234375,
+          "f1": 0.7319587628865979,
+          "fpr": 0.023
+        }
+      }
+    },
+    {
+      "class": "ocular_drift",
+      "valid_samples": 1100,
+      "masked_samples": 100,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "auroc": 0.9222600000000001,
+      "auprc": 0.6019991555159754,
+      "support": 100.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 1.0,
+      "ece": 0.06994640011255714,
+      "brier": 0.06575803458690643,
+      "operating_points": {
+        "fpr_le_0.05": {
+          "threshold": 0.3681640625,
+          "f1": 0.574585635359116,
+          "fpr": 0.029
+        },
+        "fpr_le_0.10": {
+          "threshold": 0.3681640625,
+          "f1": 0.574585635359116,
+          "fpr": 0.029
+        }
+      }
+    },
+    {
+      "class": "myogenic",
+      "valid_samples": 1100,
+      "masked_samples": 100,
+      "precision": 0.6950354609929078,
+      "recall": 0.98,
+      "f1": 0.8132780082987552,
+      "auroc": 0.9962900000000001,
+      "auprc": 0.9684734064194755,
+      "support": 100.0,
+      "false_positive_rate": 0.043,
+      "false_negative_rate": 0.02,
+      "ece": 0.03706731514708901,
+      "brier": 0.026093358173966408,
+      "operating_points": {
+        "fpr_le_0.05": {
+          "threshold": 0.7890625,
+          "f1": 0.9064039408866995,
+          "fpr": 0.011
+        },
+        "fpr_le_0.10": {
+          "threshold": 0.7890625,
+          "f1": 0.9064039408866995,
+          "fpr": 0.011
+        }
+      }
+    },
+    {
+      "class": "cardiac",
+      "valid_samples": 1100,
+      "masked_samples": 100,
+      "precision": 0.42045454545454547,
+      "recall": 0.74,
+      "f1": 0.5362318840579711,
+      "auroc": 0.92831,
+      "auprc": 0.5322626528165085,
+      "support": 100.0,
+      "false_positive_rate": 0.102,
+      "false_negative_rate": 0.26,
+      "ece": 0.1296021767570214,
+      "brier": 0.08800875395536423,
+      "operating_points": {
+        "fpr_le_0.05": {
+          "threshold": 0.587890625,
+          "f1": 0.5858585858585859,
+          "fpr": 0.04
+        },
+        "fpr_le_0.10": {
+          "threshold": 0.587890625,
+          "f1": 0.5858585858585859,
+          "fpr": 0.04
+        }
+      }
+    },
+    {
+      "class": "motion_transient",
+      "valid_samples": 1100,
+      "masked_samples": 100,
+      "precision": 0.43333333333333335,
+      "recall": 0.78,
+      "f1": 0.5571428571428572,
+      "auroc": 0.9238200000000001,
+      "auprc": 0.5431592275377631,
+      "support": 100.0,
+      "false_positive_rate": 0.102,
+      "false_negative_rate": 0.22,
+      "ece": 0.10222727719207547,
+      "brier": 0.07817890495061874,
+      "operating_points": {
+        "fpr_le_0.05": {
+          "threshold": 0.662109375,
+          "f1": 0.4293193717277487,
+          "fpr": 0.05
+        },
+        "fpr_le_0.10": {
+          "threshold": 0.505859375,
+          "f1": 0.5474452554744526,
+          "fpr": 0.099
+        }
+      }
+    },
+    {
+      "class": "unknown",
+      "valid_samples": 1200,
+      "masked_samples": 0,
+      "precision": 0.9630225080385852,
+      "recall": 0.9983333333333333,
+      "f1": 0.9803600654664485,
+      "auroc": 0.9994486111111112,
+      "auprc": 0.9994434020549342,
+      "support": 600.0,
+      "false_positive_rate": 0.03833333333333333,
+      "false_negative_rate": 0.0016666666666666668,
+      "ece": 0.0538749370429044,
+      "brier": 0.019024532288312912,
+      "operating_points": {
+        "fpr_le_0.05": {
+          "threshold": 0.681640625,
+          "f1": 0.9892294946147473,
+          "fpr": 0.016666666666666666
+        },
+        "fpr_le_0.10": {
+          "threshold": 0.681640625,
+          "f1": 0.9892294946147473,
+          "fpr": 0.016666666666666666
+        }
+      }
+    }
+  ],
+  "new_loss_weights": {
+    "diversity": 0.0,
+    "load_balance": 0.0,
+    "hard_negative": 0.0
+  },
+  "domain_calibration": false
+}

@@ -1,0 +1,7 @@
+{
+  "mode": "legacy_checkpoint",
+  "checkpoint": "runs\\first_experiment\\epoch_04.pt",
+  "status": "incompatible_with_current_model",
+  "error": "Error(s) in loading state_dict for UniCOREEG:\n\tsize mismatch for tokenizer.fuse.0.weight: copying a param with shape torch.Size([192, 395]) from checkpoint, the shape in current model is torch.Size([192, 136]).",
+  "note": "The preserved pre-shared encoder checkpoint has a different tokenizer input contract; no fabricated A/B metric is reported."
+}
