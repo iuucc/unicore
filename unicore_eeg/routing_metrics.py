@@ -12,7 +12,7 @@ UNKNOWN_INDEX = 5
 
 
 def expected_label_mask(labels: np.ndarray) -> np.ndarray:
-    return np.ones_like(labels, dtype=np.float32)
+    return np.ones_like(labels, dtype=bool)
 
 
 def ece(probability: np.ndarray, target: np.ndarray, bins: int = 10) -> float:
@@ -30,6 +30,7 @@ def masked_threshold_calibration(
     probabilities: np.ndarray,
     label_mask: np.ndarray | None = None,
     grid: np.ndarray | None = None,
+    max_fpr: float | None = 0.10,
 ) -> np.ndarray:
     from sklearn.metrics import f1_score
 
@@ -45,7 +46,17 @@ def masked_threshold_calibration(
             continue
         y = labels[valid, index]
         p = probabilities[valid, index]
-        thresholds.append(float(max(grid, key=lambda t: f1_score(y, p >= t, zero_division=0))))
+        candidates = []
+        for candidate in grid:
+            prediction = p >= candidate
+            negatives = y == 0
+            fp = float((prediction & negatives).sum())
+            tn = float((~prediction & negatives).sum())
+            fpr = fp / max(fp + tn, 1.0)
+            candidates.append((float(candidate), fpr, float(f1_score(y, prediction, zero_division=0))))
+        feasible = [row for row in candidates if max_fpr is None or row[1] <= max_fpr]
+        pool = feasible if feasible else candidates
+        thresholds.append(max(pool, key=lambda row: (row[2], -row[1], row[0]))[0])
     return np.asarray(thresholds, dtype=np.float32)
 
 

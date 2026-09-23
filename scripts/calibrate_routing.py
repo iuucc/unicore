@@ -107,7 +107,7 @@ def main() -> None:
         model, loader, device, use_spatial=args.montage is not None, coords_mask=device_coords_mask
     )
     if args.split == "val":
-        thresholds = masked_threshold_calibration(labels, probs, masks)
+        thresholds = masked_threshold_calibration(labels, probs, masks, max_fpr=0.10)
     else:
         if args.thresholds is None:
             raise SystemExit("test evaluation requires --thresholds from a completed validation calibration")

@@ -32,6 +32,7 @@ class UniCOREEGConfig:
     metadata_dim: int = 8
     max_active_experts: int = 4
     probability_threshold: float = 0.35
+    probability_thresholds: tuple[float, ...] | list[float] | None = None
     clean_threshold: float = 0.50
     bypass_source: str = "presence_head"
     router_temperature: float = 1.0
@@ -53,6 +54,11 @@ class UniCOREEGConfig:
             raise ValueError(f"artifact_count must be {len(ARTIFACT_NAMES)}")
         if self.bypass_source not in {"presence_head", "max_probability"}:
             raise ValueError("bypass_source must be 'presence_head' or 'max_probability'")
+        if self.probability_thresholds is not None:
+            values = tuple(float(value) for value in self.probability_thresholds)
+            if len(values) != len(ARTIFACT_NAMES):
+                raise ValueError(f"probability_thresholds must have {len(ARTIFACT_NAMES)} values")
+            self.probability_thresholds = values
 
 
 def _groups(channels: int) -> int:
@@ -586,6 +592,7 @@ class SparseRouter(nn.Module):
         self.temperature = config.router_temperature
         self.max_active = config.max_active_experts
         self.probability_threshold = config.probability_threshold
+        self.probability_thresholds = config.probability_thresholds
         self.clean_threshold = config.clean_threshold
         self.bypass_source = config.bypass_source
 
@@ -631,7 +638,11 @@ class SparseRouter(nn.Module):
             sparse = scores * active
         elif mode == "learned":
             bypass = artifact_presence < self.clean_threshold
-            active = (probabilities >= self.probability_threshold) & enabled & ~bypass.unsqueeze(-1)
+            if self.probability_thresholds is None:
+                thresholds = torch.full_like(probabilities, self.probability_threshold)
+            else:
+                thresholds = probabilities.new_tensor(self.probability_thresholds).view(1, -1)
+            active = (probabilities >= thresholds) & enabled & ~bypass.unsqueeze(-1)
             fallback = scores.argmax(dim=-1, keepdim=True)
             needs_fallback = ~active.any(dim=-1, keepdim=True) & ~bypass.unsqueeze(-1)
             active |= torch.zeros_like(active).scatter(-1, fallback, needs_fallback)

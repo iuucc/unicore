@@ -136,7 +136,7 @@ def main() -> None:
     logits = torch.cat([output["probability_logits"] for output in outputs]).float().cpu().numpy()
 
     rows_05, summary_05 = masked_routing_metrics(labels, probabilities, label_mask=label_mask)
-    calibrated_thresholds = masked_threshold_calibration(labels, probabilities, label_mask)
+    calibrated_thresholds = masked_threshold_calibration(labels, probabilities, label_mask, max_fpr=0.10)
     rows_calibrated, summary_calibrated = masked_routing_metrics(
         labels, probabilities, calibrated_thresholds, label_mask
     )
@@ -173,6 +173,20 @@ def main() -> None:
         "logit_margins": logit_margins,
         "head_gradient_norms": final_head_gradients,
         "all_six_heads_finite_nonzero_gradients": _all_finite_nonzero(final_head_gradients),
+        "diagnostic_gate": {
+            "known_macro_auroc_ge_0_95": bool(summary_calibrated["known_macro_auroc"] >= 0.95),
+            "known_macro_f1_ge_0_80": bool(summary_calibrated["known_macro_f1"] >= 0.80),
+            "each_known_auroc_ge_0_85": bool(all(row["auroc"] >= 0.85 for row in rows_calibrated[:5])),
+            "all_six_heads_finite_nonzero_gradients": _all_finite_nonzero(final_head_gradients),
+            "unknown_f1_ge_0_95": bool(summary_calibrated["unknown_f1"] >= 0.95),
+            "passed": bool(
+                summary_calibrated["known_macro_auroc"] >= 0.95
+                and summary_calibrated["known_macro_f1"] >= 0.80
+                and all(row["auroc"] >= 0.85 for row in rows_calibrated[:5])
+                and _all_finite_nonzero(final_head_gradients)
+                and summary_calibrated["unknown_f1"] >= 0.95
+            ),
+        },
         "per_sample": {
             "sample_id": sample_ids.tolist(),
             "condition": conditions.tolist(),

@@ -141,6 +141,12 @@ class RoutingMetricTests(unittest.TestCase):
 
         self.assertEqual(float(thresholds[0]), 0.5)
 
+    def test_threshold_calibration_respects_fpr_limit(self) -> None:
+        labels = np.asarray([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0]], dtype=np.float32)
+        probabilities = np.asarray([[0.8, 0.9, 0.1, 0.1, 0.1, 0.1], [0.7, 0.8, 0.2, 0.1, 0.1, 0.1], [0.6, 0.7, 0.9, 0.1, 0.1, 0.1]], dtype=np.float32)
+        thresholds = masked_threshold_calibration(labels, probabilities, max_fpr=0.0, grid=np.asarray([0.5, 0.85]))
+        self.assertAlmostEqual(float(thresholds[0]), 0.85, places=6)
+
 
 class PathSourceTests(unittest.TestCase):
     """T0.1：路径单一真相源。configs/_paths.yaml 必须只是 paths.py 的镜像。"""

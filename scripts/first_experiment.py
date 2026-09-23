@@ -26,7 +26,7 @@ from unicore_eeg.batching import collate_variable_channels
 from unicore_eeg.losses import UniCORELoss
 from unicore_eeg.manifest import write_run_manifest
 from unicore_eeg.model import count_parameters
-from unicore_eeg.routing_metrics import masked_routing_metrics
+from unicore_eeg.routing_metrics import masked_routing_metrics, masked_threshold_calibration
 from unicore_eeg.runtime import configure_runtime, dataloader_kwargs
 from unicore_eeg.synthetic import SyntheticEEGDataset
 
@@ -248,8 +248,14 @@ def train_model(
         torch.save(checkpoint, args.out / "last.pt")
         if val_loader is not None:
             _, diagnostics = evaluate(model, val_loader, device, spatial)
+            calibrated = tuple(diagnostics["routing"]["calibrated_thresholds"])
+            model.config.probability_thresholds = calibrated
+            model.router.probability_thresholds = calibrated
+            checkpoint["config"] = model.config.__dict__
             metric = float(diagnostics["routing"].get(selection_metric, float("nan")))
             history.append({"epoch": float(epoch), selection_metric: metric})
+            torch.save(checkpoint, args.out / f"epoch_{epoch:02d}.pt")
+            torch.save(checkpoint, args.out / "last.pt")
             if math.isfinite(metric) and metric > best_metric:
                 best_metric = metric
                 torch.save(checkpoint, args.out / "best.pt")
@@ -343,12 +349,17 @@ def evaluate(
     artifact_presence = torch.cat(all_artifact_presence).numpy()
     artifact_targets = (labels.sum(axis=1) > 0).astype(np.float32)
     _, masked_summary = masked_routing_metrics(labels, probabilities, label_mask=label_masks)
+    calibrated_thresholds = masked_threshold_calibration(labels, probabilities, label_masks, max_fpr=0.10)
     route_metrics = {
         "macro_f1_at_0_5": masked_summary["six_class_macro_f1"],
         "macro_f1_at_route_threshold": masked_routing_metrics(
             labels,
             probabilities,
-            thresholds=np.full(labels.shape[1], model.config.probability_threshold, dtype=np.float32),
+            thresholds=(
+                np.asarray(model.config.probability_thresholds, dtype=np.float32)
+                if model.config.probability_thresholds is not None
+                else np.full(labels.shape[1], model.config.probability_threshold, dtype=np.float32)
+            ),
             label_mask=label_masks,
         )[1]["six_class_macro_f1"],
         "known_macro_f1": masked_summary["known_macro_f1"],
@@ -356,6 +367,7 @@ def evaluate(
         "known_macro_auprc": masked_summary["known_macro_auprc"],
         "macro_auroc": masked_summary["macro_auroc"],
         "macro_auprc": masked_summary["macro_auprc"],
+        "calibrated_thresholds": calibrated_thresholds.tolist(),
         "artifact_presence_auroc": float(roc_auc_score(artifact_targets, artifact_presence)),
         "unknown_detection_auroc": float(roc_auc_score(labels[:, -1], probabilities[:, -1])),
         "unknown_false_activation_clean": float(probabilities[labels.sum(axis=1) == 0, -1].mean()),
