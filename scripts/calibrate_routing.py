@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -49,23 +50,37 @@ def _collect(model: UniCOREEG, loader: DataLoader, device: torch.device) -> tupl
     return np.concatenate(labels), np.concatenate(probs), np.concatenate(presence), np.concatenate(routes)
 
 
-def _metrics(labels: np.ndarray, probs: np.ndarray, thresholds: np.ndarray) -> tuple[list[dict[str, float]], dict[str, float]]:
+def _metrics(labels: np.ndarray, probs: np.ndarray, thresholds: np.ndarray) -> tuple[list[dict[str, object]], dict[str, float]]:
     from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
     pred = probs >= thresholds[None, :]
-    rows = []
+    rows: list[dict[str, object]] = []
     for index, name in enumerate(ARTIFACT_NAMES):
         y, p, z = labels[:, index], probs[:, index], pred[:, index]
         tp = float(((z == 1) & (y == 1)).sum()); fp = float(((z == 1) & (y == 0)).sum())
         fn = float(((z == 0) & (y == 1)).sum()); tn = float(((z == 0) & (y == 0)).sum())
+        ops = {}
+        for limit in (0.05, 0.10):
+            feasible = []
+            for candidate in np.linspace(0.01, 0.99, 99):
+                candidate_pred = p >= candidate
+                candidate_fp = float(((candidate_pred == 1) & (y == 0)).sum())
+                candidate_tn = float(((candidate_pred == 0) & (y == 0)).sum())
+                fpr = candidate_fp / max(candidate_fp + candidate_tn, 1.0)
+                if fpr <= limit:
+                    feasible.append((float(f1_score(y, candidate_pred, zero_division=0)), float(candidate), fpr))
+            ops[f"fpr_le_{limit:.2f}"] = (max(feasible) if feasible else "not feasible")
         rows.append({"class": name, "precision": float(precision_score(y, z, zero_division=0)),
             "recall": float(recall_score(y, z, zero_division=0)), "f1": float(f1_score(y, z, zero_division=0)),
             "auroc": float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else float("nan"),
             "auprc": float(average_precision_score(y, p)) if y.sum() else float("nan"),
             "support": float(y.sum()), "false_positive_rate": fp / max(fp + tn, 1.0),
             "false_negative_rate": fn / max(fn + tp, 1.0), "ece": _ece(p, y),
-            "brier": float(np.mean((p - y) ** 2))})
+            "brier": float(np.mean((p - y) ** 2)), "operating_points": ops})
     known = pred[:, :5]; known_y = labels[:, :5]
+    known_auroc = [roc_auc_score(labels[:, i], probs[:, i]) for i in range(5) if len(np.unique(labels[:, i])) == 2]
+    known_auprc = [average_precision_score(labels[:, i], probs[:, i]) for i in range(5) if labels[:, i].sum()]
     summary = {"known_macro_f1": float(f1_score(known_y, known, average="macro", zero_division=0)),
+        "known_macro_auroc": float(np.mean(known_auroc)), "known_macro_auprc": float(np.mean(known_auprc)),
         "six_class_macro_f1": float(f1_score(labels, pred, average="macro", zero_division=0)),
         "micro_f1": float(f1_score(labels, pred, average="micro", zero_division=0)),
         "macro_auroc": float(np.nanmean([row["auroc"] for row in rows])),
@@ -90,15 +105,31 @@ def main() -> None:
     parser.add_argument("--channels", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=4242)
+    parser.add_argument("--use-public-sources", action="store_true")
+    parser.add_argument("--data-root", type=Path, default=Path("data/raw"))
+    parser.add_argument("--montage")
+    parser.add_argument("--montage-channels", nargs="+")
+    parser.add_argument("--bypass-source", choices=("presence_head", "max_probability"))
     args = parser.parse_args()
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is required; refusing CPU calibration")
     device = torch.device("cuda:0")
     checkpoint = torch.load(args.checkpoint, map_location="cpu")
-    model = UniCOREEG(UniCOREEGConfig(**checkpoint["config"])).to(device)
+    model_config = UniCOREEGConfig(**checkpoint["config"])
+    if args.bypass_source:
+        model_config.bypass_source = args.bypass_source
+    model = UniCOREEG(model_config).to(device)
     model.load_state_dict(checkpoint["model"]); model.eval()
+    coords = None
+    if args.montage:
+        from unicore_eeg.montage import load_montage, resolve_channels
+        spec = load_montage(args.montage)
+        names = list(args.montage_channels or spec.channels)
+        _, coords, _ = resolve_channels(names, spec)
+        args.channels = len(names)
     dataset = SyntheticEEGDataset(samples=args.samples, channels=args.channels, seed=args.seed,
-        mode="first_experiment", split=args.split)
+        mode="first_experiment", split=args.split, use_public_sources=args.use_public_sources,
+        data_root=args.data_root, montage_coords=coords)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=collate_variable_channels)
     labels, probs, presence, routes = _collect(model, loader, device)
     if args.split == "val":
@@ -109,7 +140,12 @@ def main() -> None:
         frozen = json.loads(args.thresholds.read_text(encoding="utf-8"))["thresholds"]
         thresholds = np.asarray([float(frozen[name]) for name in ARTIFACT_NAMES])
     rows, summary = _metrics(labels, probs, thresholds)
-    payload = {"split": args.split, "checkpoint": str(args.checkpoint), "thresholds": dict(zip(ARTIFACT_NAMES, thresholds.tolist())),
+    checkpoint_sha256 = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
+    payload = {"split": args.split, "checkpoint": str(args.checkpoint), "checkpoint_sha256": checkpoint_sha256,
+        "git_sha": __import__("subprocess").check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        "command": sys.argv, "data_config": {"use_public_sources": args.use_public_sources, "data_root": str(args.data_root), "montage": args.montage, "montage_channels": args.montage_channels},
+        "seed": args.seed, "samples": args.samples, "bypass_source": model_config.bypass_source,
+        "thresholds": dict(zip(ARTIFACT_NAMES, thresholds.tolist())),
         "metrics": rows, "summary": summary, "artifact_presence_mean": float(presence.mean()),
         "source_split_manifest": dataset.public.split_manifest() if dataset.public else None}
     payload["expert_activation_matrix"] = routes.mean(axis=0).tolist()

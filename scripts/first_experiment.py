@@ -54,6 +54,7 @@ DEFAULTS: dict[str, Any] = {
     "epochs": 4,
     "train_samples": 4096,
     "eval_samples": 1200,
+    "val_samples": 1200,
     "batch_size": 24,
     "channels": 1,
     "length": 1000,
@@ -93,6 +94,7 @@ def parse_args() -> tuple[argparse.Namespace, dict[str, Any] | None]:
     parser.add_argument("--epochs", type=int, default=argparse.SUPPRESS)
     parser.add_argument("--train-samples", type=int, default=argparse.SUPPRESS)
     parser.add_argument("--eval-samples", type=int, default=argparse.SUPPRESS)
+    parser.add_argument("--val-samples", type=int, default=argparse.SUPPRESS)
     parser.add_argument("--batch-size", type=int, default=argparse.SUPPRESS)
     parser.add_argument("--channels", type=int, default=argparse.SUPPRESS)
     parser.add_argument("--length", type=int, default=argparse.SUPPRESS)
@@ -165,12 +167,16 @@ def train_model(
     args: argparse.Namespace,
     device: torch.device,
     spatial: dict[str, Any] | None = None,
+    val_loader: DataLoader | None = None,
 ) -> None:
     loss_fn = UniCORELoss()
     scaler = torch.amp.GradScaler("cuda", enabled=False)
     current_stage = ""
     optimizer: torch.optim.Optimizer | None = None
     skipped_steps = 0
+    selection_metric = "macro_auroc"
+    best_metric = float("-inf")
+    history: list[dict[str, float]] = []
     for epoch in range(1, args.epochs + 1):
         stage = stage_for_epoch(epoch, args.epochs)
         if stage != current_stage:
@@ -235,6 +241,14 @@ def train_model(
             raise RuntimeError(f"model became non-finite at epoch {epoch}")
         torch.save(checkpoint, args.out / f"epoch_{epoch:02d}.pt")
         torch.save(checkpoint, args.out / "last.pt")
+        if val_loader is not None:
+            _, diagnostics = evaluate(model, val_loader, device, spatial)
+            metric = float(diagnostics["routing"].get(selection_metric, float("nan")))
+            history.append({"epoch": float(epoch), selection_metric: metric})
+            if math.isfinite(metric) and metric > best_metric:
+                best_metric = metric
+                torch.save(checkpoint, args.out / "best.pt")
+            (args.out / "validation_history.json").write_text(json.dumps({"selection_metric": selection_metric, "history": history}, indent=2), encoding="utf-8")
 
 
 def _sample_correlation(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -442,6 +456,7 @@ def main() -> None:
         dataset={
             "name": "synthetic",
             "train_samples": args.train_samples,
+            "val_samples": args.val_samples,
             "eval_samples": args.eval_samples,
             "eval_mode": "first_experiment",
             "channels": args.channels,
@@ -450,6 +465,7 @@ def main() -> None:
             "sample_rate": args.sample_rate,
             "use_public_sources": args.use_public_sources,
             "data_root": str(args.data_root),
+            "split_seeds": {"train": args.seed, "val": args.seed + 100_000, "test": args.seed + 1_000_000},
         },
         extra={
             "route_modes": list(ROUTE_MODES),
@@ -476,6 +492,18 @@ def main() -> None:
         montage_coords=coords,
         split="train",
     )
+    val_set = SyntheticEEGDataset(
+        samples=args.val_samples,
+        channels=args.channels,
+        length=args.length,
+        sample_rate=args.sample_rate,
+        seed=args.seed + 100_000,
+        mode="first_experiment",
+        use_public_sources=args.use_public_sources,
+        data_root=args.data_root,
+        montage_coords=coords,
+        split="val",
+    )
     eval_set = SyntheticEEGDataset(
         samples=args.eval_samples,
         channels=args.channels,
@@ -490,13 +518,18 @@ def main() -> None:
     )
     loader_kwargs = dataloader_kwargs(args.batch_size, args.num_workers, device)
     train_loader = DataLoader(train_set, shuffle=True, collate_fn=collate_variable_channels, **loader_kwargs)
+    val_loader = DataLoader(val_set, shuffle=False, collate_fn=collate_variable_channels, **loader_kwargs)
     eval_loader = DataLoader(eval_set, shuffle=False, collate_fn=collate_variable_channels, **loader_kwargs)
     print(
         f"device={device} params={count_parameters(model):,} num_workers={args.num_workers} "
         f"precision={runtime['precision']} torch_compile={runtime['torch_compile']}"
     )
     if not args.checkpoint:
-        train_model(model, train_loader, args, device, spatial)
+        train_model(model, train_loader, args, device, spatial, val_loader)
+        best_path = args.out / "best.pt"
+        if best_path.exists():
+            best_checkpoint = torch.load(best_path, map_location=device)
+            model.load_state_dict(best_checkpoint["model"])
     if args.skip_eval:
         print("training complete; evaluation skipped (calibrate on validation before test)")
         return

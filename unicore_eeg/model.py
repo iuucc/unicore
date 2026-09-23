@@ -33,6 +33,7 @@ class UniCOREEGConfig:
     max_active_experts: int = 4
     probability_threshold: float = 0.35
     clean_threshold: float = 0.50
+    bypass_source: str = "presence_head"
     router_temperature: float = 1.0
     eps: float = 1e-5
     # ---- 空间投影（T1.3）----
@@ -50,6 +51,8 @@ class UniCOREEGConfig:
     def __post_init__(self) -> None:
         if self.artifact_count != len(ARTIFACT_NAMES):
             raise ValueError(f"artifact_count must be {len(ARTIFACT_NAMES)}")
+        if self.bypass_source not in {"presence_head", "max_probability"}:
+            raise ValueError("bypass_source must be 'presence_head' or 'max_probability'")
 
 
 def _groups(channels: int) -> int:
@@ -584,6 +587,7 @@ class SparseRouter(nn.Module):
         self.max_active = config.max_active_experts
         self.probability_threshold = config.probability_threshold
         self.clean_threshold = config.clean_threshold
+        self.bypass_source = config.bypass_source
 
     def forward(
         self,
@@ -593,7 +597,19 @@ class SparseRouter(nn.Module):
         disabled_experts: Tensor | None = None,
     ) -> dict[str, Tensor]:
         probabilities = tokens["probabilities"]
-        artifact_presence = tokens.get("artifact_presence_probability", probabilities.masked_fill(disabled_experts.bool(), 0.0).amax(dim=-1) if disabled_experts is not None else probabilities.amax(dim=-1))
+        if self.bypass_source == "presence_head":
+            artifact_presence = tokens.get("artifact_presence_probability")
+            if artifact_presence is None:
+                # Direct router callers and legacy checkpoints may omit the head.
+                artifact_presence = probabilities.masked_fill(
+                    disabled_experts.bool(), 0.0
+                ) if disabled_experts is not None else probabilities
+                artifact_presence = artifact_presence.amax(dim=-1)
+        else:
+            masked_probabilities = probabilities.masked_fill(
+                disabled_experts.bool(), 0.0
+            ) if disabled_experts is not None else probabilities
+            artifact_presence = masked_probabilities.amax(dim=-1)
         scores = probabilities * torch.sigmoid(tokens["severities"]) * F.softmax(
             tokens["priorities"] / max(self.temperature, 1e-4), dim=-1
         )

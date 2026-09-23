@@ -66,6 +66,14 @@ class RouterTests(unittest.TestCase):
         outputs = self.router(self.tokens(torch.tensor([[0.99, 0.8, 0.7, 0.6, 0.5, 0.4]])), disabled_experts=disabled)
         self.assertEqual(float(outputs["route"][0, 0]), 0.0)
 
+    def test_bypass_source_selects_presence_head_or_max_probability(self) -> None:
+        tokens = self.tokens(torch.full((1, 6), 0.4))
+        tokens["artifact_presence_probability"] = torch.tensor([0.9])
+        presence = SparseRouter(UniCOREEGConfig(bypass_source="presence_head"))(tokens)
+        maximum = SparseRouter(UniCOREEGConfig(bypass_source="max_probability"))(tokens)
+        self.assertFalse(bool(presence["bypass"][0]))
+        self.assertTrue(bool(maximum["bypass"][0]))
+
 
 class DatasetTests(unittest.TestCase):
     def test_six_expert_record_shapes(self) -> None:
