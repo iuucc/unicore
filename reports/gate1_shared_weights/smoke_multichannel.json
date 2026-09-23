@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "generated_utc": "2026-09-23T09:23:38.3020270Z",
+  "device": "cpu",
+  "precision": "mixed: bf16-requested/CPU fallback for C=1..64; fp32 for C=128",
+  "batch_size": 2,
+  "length": 1000,
+  "steps": 1,
+  "results": [
+    {
+      "channels": 1,
+      "batch_size": 2,
+      "parameters": 15388896,
+      "metadata_dim": 8,
+      "status": "ok",
+      "loss_first": 3.545562505722046,
+      "loss_last": 3.545562505722046,
+      "ms_per_step_median": 823.6963000381365,
+      "peak_memory_gib": null
+    },
+    {
+      "channels": 3,
+      "batch_size": 2,
+      "parameters": 15388896,
+      "metadata_dim": 8,
+      "status": "ok",
+      "loss_first": 3.6410417556762695,
+      "loss_last": 3.6410417556762695,
+      "ms_per_step_median": 1358.2336999243125,
+      "peak_memory_gib": null
+    },
+    {
+      "channels": 8,
+      "batch_size": 2,
+      "parameters": 15388896,
+      "metadata_dim": 8,
+      "status": "ok",
+      "loss_first": 2.526226758956909,
+      "loss_last": 2.526226758956909,
+      "ms_per_step_median": 2968.1615999434143,
+      "peak_memory_gib": null
+    },
+    {
+      "channels": 34,
+      "batch_size": 2,
+      "parameters": 15388896,
+      "metadata_dim": 8,
+      "status": "ok",
+      "loss_first": 3.503253698348999,
+      "loss_last": 3.503253698348999,
+      "ms_per_step_median": 12225.250000017695,
+      "peak_memory_gib": null
+    },
+    {
+      "channels": 64,
+      "batch_size": 2,
+      "parameters": 15388896,
+      "metadata_dim": 8,
+      "status": "ok",
+      "loss_first": 5.594390869140625,
+      "loss_last": 5.594390869140625,
+      "ms_per_step_median": 19569.598399917595,
+      "peak_memory_gib": null
+    },
+    {
+      "channels": 128,
+      "batch_size": 1,
+      "parameters": 15388896,
+      "metadata_dim": 8,
+      "status": "ok",
+      "loss_first": 3.0025534629821777,
+      "loss_last": 3.0025534629821777,
+      "ms_per_step_median": 10731.035700067878,
+      "peak_memory_gib": null
+    }
+  ],
+  "shared_checkpoint": [
+    {
+      "channels": 1,
+      "status": "ok",
+      "output_shape": [
+        2,
+        1,
+        1000
+      ],
+      "parameters": 15388896
+    },
+    {
+      "channels": 3,
+      "status": "ok",
+      "output_shape": [
+        2,
+        3,
+        1000
+      ],
+      "parameters": 15388896
+    },
+    {
+      "channels": 8,
+      "status": "ok",
+      "output_shape": [
+        2,
+        8,
+        1000
+      ],
+      "parameters": 15388896
+    },
+    {
+      "channels": 34,
+      "status": "ok",
+      "output_shape": [
+        2,
+        34,
+        1000
+      ],
+      "parameters": 15388896
+    },
+    {
+      "channels": 64,
+      "status": "ok",
+      "output_shape": [
+        2,
+        64,
+        1000
+      ],
+      "parameters": 15388896
+    },
+    {
+      "channels": 128,
+      "status": "ok",
+      "output_shape": [
+        1,
+        128,
+        1000
+      ],
+      "parameters": 15388896
+    }
+  ],
+  "all_ok": true,
+  "shared_checkpoint_all_ok": true
+}

@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "written_utc": "2026-09-23T09:20:06Z",
+  "project_root": "D:\\codexwork\\unicore",
+  "git": {
+    "available": true,
+    "head": "9dc527dd228716f5c583e84fc275cd02e8812ac8",
+    "branch": "codex/gate1-shared-weights",
+    "dirty": false,
+    "porcelain": ""
+  },
+  "code_version_hash": "62cefd31c6b4dc4b841148f450c669335373c4eb62b51b1b2b1d500428c855de",
+  "code_hash_scope": [
+    "unicore_eeg",
+    "scripts",
+    "tests"
+  ],
+  "command": [
+    "scripts/first_experiment.py",
+    "--config",
+    "configs/multichannel_base.yaml",
+    "--montage",
+    "standard_reference",
+    "--montage-channels",
+    "Fp1",
+    "Fp2",
+    "F7",
+    "F8",
+    "O1",
+    "O2",
+    "C3",
+    "C4",
+    "--channels",
+    "8",
+    "--epochs",
+    "2",
+    "--train-samples",
+    "32",
+    "--eval-samples",
+    "16",
+    "--batch-size",
+    "8",
+    "--num-workers",
+    "0",
+    "--seed",
+    "42",
+    "--out",
+    "runs/gate1_shared_weights/smoke_multichannel_c8_current"
+  ],
+  "settings": {
+    "epochs": 2,
+    "train_samples": 32,
+    "eval_samples": 16,
+    "batch_size": 8,
+    "channels": 8,
+    "length": 1000,
+    "sample_rate": 500,
+    "lr": 0.0001,
+    "num_workers": 0,
+    "seed": 42,
+    "use_public_sources": false,
+    "data_root": "D:\\codexwork\\unicore\\data\\raw",
+    "checkpoint": null,
+    "out": "runs\\gate1_shared_weights\\smoke_multichannel_c8_current",
+    "montage": "standard_reference",
+    "montage_channels": [
+      "Fp1",
+      "Fp2",
+      "F7",
+      "F8",
+      "O1",
+      "O2",
+      "C3",
+      "C4"
+    ],
+    "config": "configs\\multichannel_base.yaml"
+  },
+  "config_file": "runs\\gate1_shared_weights\\smoke_multichannel_c8_current\\config.yaml",
+  "config": {
+    "schema_version": 1,
+    "name": "multichannel_base",
+    "signal": {
+      "sample_rate": 500,
+      "window_size": 1000,
+      "bandpass": {
+        "low": 0.5,
+        "high": 45.0,
+        "order": 4,
+        "method": "filtfilt"
+      },
+      "resample_method": "resample_poly",
+      "car": true,
+      "normalize": "none",
+      "channel_policy": "error"
+    },
+    "split": {
+      "unit": "subject",
+      "fractions": {
+        "train": 0.6,
+        "val": 0.2,
+        "test": 0.2
+      },
+      "seeds": [
+        42,
+        1234,
+        20260922
+      ],
+      "leakage_check": "require_zero"
+    },
+    "runtime": {
+      "precision": "bf16",
+      "grad_scaler": false,
+      "torch_compile": false,
+      "cudnn_benchmark": true,
+      "matmul_precision": "high",
+      "device": "cuda",
+      "visible_devices": "0",
+      "deterministic": false
+    },
+    "dataloader": {
+      "batch_size": 128,
+      "num_workers": 8,
+      "persistent_workers": true,
+      "prefetch_factor": 4,
+      "pin_memory": true,
+      "grad_accum_steps": 1,
+      "drop_last": true
+    },
+    "paths": {
+      "raw_root": "D:\\codexwork\\unicore\\data\\raw",
+      "runs_root": "D:\\codexwork\\unicore\\runs",
+      "config_root": "D:\\codexwork\\unicore\\configs",
+      "pool_registry": "D:\\codexwork\\unicore\\data\\local_sources.json"
+    },
+    "_config_path": "D:\\codexwork\\unicore\\configs\\multichannel_base.yaml",
+    "montage": {
+      "name": null,
+      "file": null,
+      "channels": null,
+      "expect_channels": null
+    },
+    "spatial": {
+      "use_spatial": true,
+      "pca_rank": 4,
+      "pca_mode": "power",
+      "power_iterations": 4,
+      "coord_space": "raw",
+      "modulation_alpha_scale": 1.0,
+      "hidden": 32
+    },
+    "mixer": {
+      "enabled": true,
+      "propagation_delay_ms": 8.0,
+      "record_mixing_matrix": true
+    }
+  },
+  "dataset": {
+    "name": "synthetic",
+    "train_samples": 32,
+    "eval_samples": 16,
+    "eval_mode": "first_experiment",
+    "channels": 8,
+    "channel_list": [
+      "Fp1",
+      "Fp2",
+      "F7",
+      "F8",
+      "O1",
+      "O2",
+      "C3",
+      "C4"
+    ],
+    "window_size": 1000,
+    "sample_rate": 500,
+    "use_public_sources": false,
+    "data_root": "D:\\codexwork\\unicore\\data\\raw"
+  },
+  "extra": {
+    "route_modes": [
+      "oracle",
+      "learned",
+      "all"
+    ],
+    "condition_names": [
+      "clean",
+      "harmonic",
+      "ocular_drift",
+      "myogenic",
+      "cardiac",
+      "motion_transient",
+      "unknown",
+      "heldout_harmonic",
+      "heldout_ocular_drift",
+      "heldout_myogenic",
+      "heldout_cardiac",
+      "heldout_motion_transient"
+    ],
+    "montage": {
+      "name": "standard_reference",
+      "resolve": "names",
+      "bipolar": false,
+      "channel_count": 8,
+      "subset": true,
+      "channels": [
+        "Fp1",
+        "Fp2",
+        "F7",
+        "F8",
+        "O1",
+        "O2",
+        "C3",
+        "C4"
+      ],
+      "unresolved": []
+    }
+  }
+}

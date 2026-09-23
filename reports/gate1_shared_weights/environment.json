@@ -1,0 +1,12 @@
+{
+  "python": "3.13.9",
+  "torch": "2.14.0+cpu",
+  "cuda_available": false,
+  "device": "cpu",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "current_git_sha": "9dc527dd228716f5c583e84fc275cd02e8812ac8",
+  "current_branch": "codex/gate1-shared-weights",
+  "test_command": "KMP_DUPLICATE_LIB_OK=TRUE python -m pytest -q",
+  "test_result": "100 passed in 74.51s",
+  "c1_full_regression_provenance": "runs/gate1_shared_weights/regression_c1_seed42/run_manifest.json; executed 2026-09-22 on b746c431 with current shared-weight model code; not rerun on this CPU-only host"
+}

@@ -1,0 +1,15 @@
+source,metric,value
+c8_short,macro_f1_at_0_5,0.0937
+c8_short,macro_f1_at_route_threshold,0.2412
+c8_short,macro_auroc,0.6571
+c8_short,artifact_presence_auroc,0.5357
+c8_short,unknown_detection_auroc,0.6167
+c8_short,unknown_false_activation_clean,0.4833
+c8_short,unknown_false_activation_known,0.4799
+c1_full_archived_current_architecture,macro_f1_at_0_5,0.5135
+c1_full_archived_current_architecture,macro_f1_at_route_threshold,0.4633
+c1_full_archived_current_architecture,macro_auroc,0.9112
+c1_full_archived_current_architecture,artifact_presence_auroc,0.9922
+c1_full_archived_current_architecture,unknown_detection_auroc,0.9993
+c1_full_archived_current_architecture,unknown_false_activation_clean,0.0038
+c1_full_archived_current_architecture,unknown_false_activation_known,0.0454

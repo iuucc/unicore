@@ -1,0 +1,13 @@
+source,condition,harmonic,ocular_drift,myogenic,cardiac,motion_transient,unknown
+c8_short,clean,0.000,0.261,0.255,0.000,0.246,0.237
+c8_short,harmonic,0.000,0.262,0.256,0.000,0.246,0.236
+c8_short,ocular_drift,0.000,0.262,0.256,0.000,0.246,0.237
+c8_short,myogenic,0.000,0.261,0.256,0.000,0.246,0.237
+c8_short,cardiac,0.000,0.259,0.253,0.000,0.243,0.245
+c8_short,motion_transient,0.000,0.260,0.254,0.000,0.245,0.241
+c8_short,unknown,0.000,0.260,0.255,0.000,0.245,0.240
+c8_short,heldout_harmonic,0.000,0.261,0.255,0.000,0.246,0.237
+c8_short,heldout_ocular_drift,0.240,0.000,0.265,0.000,0.255,0.240
+c8_short,heldout_myogenic,0.236,0.266,0.000,0.000,0.250,0.248
+c8_short,heldout_cardiac,0.233,0.263,0.257,0.000,0.247,0.000
+c8_short,heldout_motion_transient,0.240,0.270,0.265,0.225,0.000,0.000

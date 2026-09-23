@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "name": "multichannel_base",
+  "signal": {
+    "sample_rate": 500,
+    "window_size": 1000,
+    "bandpass": {
+      "low": 0.5,
+      "high": 45.0,
+      "order": 4,
+      "method": "filtfilt"
+    },
+    "resample_method": "resample_poly",
+    "car": true,
+    "normalize": "none",
+    "channel_policy": "error"
+  },
+  "split": {
+    "unit": "subject",
+    "fractions": {
+      "train": 0.6,
+      "val": 0.2,
+      "test": 0.2
+    },
+    "seeds": [
+      42,
+      1234,
+      20260922
+    ],
+    "leakage_check": "require_zero"
+  },
+  "runtime": {
+    "precision": "bf16",
+    "grad_scaler": false,
+    "torch_compile": false,
+    "cudnn_benchmark": true,
+    "matmul_precision": "high",
+    "device": "cuda",
+    "visible_devices": "0",
+    "deterministic": false
+  },
+  "dataloader": {
+    "batch_size": 128,
+    "num_workers": 8,
+    "persistent_workers": true,
+    "prefetch_factor": 4,
+    "pin_memory": true,
+    "grad_accum_steps": 1,
+    "drop_last": true
+  },
+  "paths": {
+    "raw_root": "D:\\codexwork\\unicore\\data\\raw",
+    "runs_root": "D:\\codexwork\\unicore\\runs",
+    "config_root": "D:\\codexwork\\unicore\\configs",
+    "pool_registry": "D:\\codexwork\\unicore\\data\\local_sources.json"
+  },
+  "_config_path": "D:\\codexwork\\unicore\\configs\\multichannel_base.yaml",
+  "montage": {
+    "name": null,
+    "file": null,
+    "channels": null,
+    "expect_channels": null
+  },
+  "spatial": {
+    "use_spatial": true,
+    "pca_rank": 4,
+    "pca_mode": "power",
+    "power_iterations": 4,
+    "coord_space": "raw",
+    "modulation_alpha_scale": 1.0,
+    "hidden": 32
+  },
+  "mixer": {
+    "enabled": true,
+    "propagation_delay_ms": 8.0,
+    "record_mixing_matrix": true
+  }
+}

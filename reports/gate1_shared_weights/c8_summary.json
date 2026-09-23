@@ -1,0 +1,19 @@
+{
+  "source": "runs/gate1_shared_weights/smoke_multichannel_c8_current",
+  "command": "python scripts/first_experiment.py --config configs/multichannel_base.yaml --montage standard_reference --montage-channels Fp1 Fp2 F7 F8 O1 O2 C3 C4 --channels 8 --epochs 2 --train-samples 32 --eval-samples 16 --batch-size 8 --num-workers 0 --seed 42 --out runs/gate1_shared_weights/smoke_multichannel_c8_current",
+  "status": "COMPLETED",
+  "epochs": 2,
+  "train_samples": 32,
+  "eval_samples": 16,
+  "batch_size": 8,
+  "channels": 8,
+  "final_train_loss": 4.016,
+  "macro_f1_at_0_5": 0.0937,
+  "macro_f1_at_route_threshold": 0.2412,
+  "macro_auroc": 0.6571,
+  "artifact_presence_auroc": 0.5357,
+  "unknown_detection_auroc": 0.6167,
+  "unknown_false_activation_clean": 0.4833,
+  "unknown_false_activation_known": 0.4799,
+  "note": "流程闭环结果，样本量很小，不作为论文性能结论。"
+}

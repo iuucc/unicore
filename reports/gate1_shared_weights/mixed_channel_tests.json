@@ -1,0 +1,14 @@
+{
+  "command": "KMP_DUPLICATE_LIB_OK=TRUE python -m pytest -q tests/test_core.py -k \"one_model_instance_runs_all_channel_counts or channel_permutation_equivariance or variable_channel_batch_and_masked_loss or unknown_channel_is_masked_without_raising\"",
+  "status": "PASS",
+  "passed": 4,
+  "failed": 0,
+  "deselected": 96,
+  "elapsed_seconds": 8.88,
+  "checks": {
+    "shared_model_instance_channel_counts": "PASS",
+    "channel_permutation_equivariance": "PASS",
+    "mixed_channel_batch_padding_and_masked_loss": "PASS",
+    "unresolved_channel_masking": "PASS"
+  }
+}

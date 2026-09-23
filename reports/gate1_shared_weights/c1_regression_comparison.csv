@@ -1,0 +1,8 @@
+metric,history_baseline_t0_5,current_architecture_c1_full_regression,delta,source,status
+macro-AUROC,0.8987,0.9112,0.0125,runs/gate1_shared_weights/regression_c1_seed42/report.md,PASS
+macro-F1@0.5,0.5683,0.5135,-0.0547,runs/gate1_shared_weights/regression_c1_seed42/report.md,FAIL
+macro-F1@route_threshold,0.5167,0.4633,-0.0533,runs/gate1_shared_weights/regression_c1_seed42/report.md,FAIL
+artifact-presence AUROC,0.9937,0.9922,-0.0015,runs/gate1_shared_weights/regression_c1_seed42/report.md,PASS
+unknown-detection AUROC,0.9997,0.9993,-0.0004,runs/gate1_shared_weights/regression_c1_seed42/report.md,PASS
+unknown false activation clean,0.0020,0.0038,0.0018,runs/gate1_shared_weights/regression_c1_seed42/report.md,INFO
+unknown false activation known,0.0468,0.0454,-0.0014,runs/gate1_shared_weights/regression_c1_seed42/report.md,INFO
