@@ -1,0 +1,7 @@
+git fetch origin
+git checkout codex/gate1-shared-weights
+git pull --ff-only origin codex/gate1-shared-weights
+CUDA_VISIBLE_DEVICES=0 python scripts/router_overfit.py --channels 1 --steps 300
+CUDA_VISIBLE_DEVICES=0 python scripts/router_overfit.py --channels 8 --steps 300
+python -m compileall unicore_eeg scripts tests
+python -m pytest -q

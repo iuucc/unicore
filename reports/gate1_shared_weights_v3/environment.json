@@ -1,0 +1,1 @@
+{"python":"3.11.16","torch":"2.11.0+cu128","cuda":true,"device":"NVIDIA GeForce RTX 5080","cuda_visible_devices":"0","precision":"bf16","ddp":false,"torch_compile":false}

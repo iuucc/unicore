@@ -1,0 +1,102 @@
+{
+  "channels": 1,
+  "samples": 64,
+  "steps": 300,
+  "seed": 42,
+  "loss": 0.07075590640306473,
+  "metrics": [
+    {
+      "class": "harmonic",
+      "positive": 6,
+      "negative": 58,
+      "f1": 0.7058823529411765,
+      "auroc": 0.9597701149425287,
+      "positive_logit_mean": 3.8606770038604736,
+      "negative_logit_mean": -12.025053977966309,
+      "logit_margin": 15.885730743408203
+    },
+    {
+      "class": "ocular_drift",
+      "positive": 6,
+      "negative": 58,
+      "f1": 0.0,
+      "auroc": 0.8563218390804598,
+      "positive_logit_mean": -0.8177083134651184,
+      "negative_logit_mean": -12.549097061157227,
+      "logit_margin": 11.731389045715332
+    },
+    {
+      "class": "myogenic",
+      "positive": 6,
+      "negative": 58,
+      "f1": 0.7058823529411765,
+      "auroc": 0.9913793103448275,
+      "positive_logit_mean": 6.963541507720947,
+      "negative_logit_mean": -10.558189392089844,
+      "logit_margin": 17.521730422973633
+    },
+    {
+      "class": "cardiac",
+      "positive": 5,
+      "negative": 59,
+      "f1": 0.0,
+      "auroc": 0.8915254237288137,
+      "positive_logit_mean": -1.365625023841858,
+      "negative_logit_mean": -6.6954450607299805,
+      "logit_margin": 5.329820156097412
+    },
+    {
+      "class": "motion_transient",
+      "positive": 5,
+      "negative": 59,
+      "f1": 0.7142857142857143,
+      "auroc": 0.9694915254237289,
+      "positive_logit_mean": 5.96875,
+      "negative_logit_mean": -8.687234878540039,
+      "logit_margin": 14.655984878540039
+    },
+    {
+      "class": "unknown",
+      "positive": 30,
+      "negative": 34,
+      "f1": 1.0,
+      "auroc": 1.0,
+      "positive_logit_mean": 7.487500190734863,
+      "negative_logit_mean": -8.044577598571777,
+      "logit_margin": 15.53207778930664
+    }
+  ],
+  "trainable_gradient_norms": {
+    "tokenizer.time_branch.0.net.0.weight": 0.019437965005636215,
+    "tokenizer.time_branch.0.net.0.bias": 0.002318794373422861,
+    "tokenizer.time_branch.0.net.1.weight": 0.0049044121988117695,
+    "tokenizer.time_branch.0.net.1.bias": 0.0037950652185827494,
+    "tokenizer.time_branch.1.net.0.weight": 0.0057654185220599174,
+    "tokenizer.time_branch.1.net.0.bias": 0.0007120699738152325,
+    "tokenizer.time_branch.1.net.1.weight": 0.004898576997220516,
+    "tokenizer.time_branch.1.net.1.bias": 0.002721243305131793,
+    "tokenizer.freq_branch.0.net.0.weight": 0.016799893230199814,
+    "tokenizer.freq_branch.0.net.0.bias": 0.003581131109967828,
+    "tokenizer.freq_branch.0.net.1.weight": 0.004279732704162598,
+    "tokenizer.freq_branch.0.net.1.bias": 0.00301616289652884,
+    "tokenizer.freq_branch.1.net.0.weight": 0.0052519505843520164,
+    "tokenizer.freq_branch.1.net.0.bias": 0.0003561222110874951,
+    "tokenizer.freq_branch.1.net.1.weight": 0.0030317476484924555,
+    "tokenizer.freq_branch.1.net.1.bias": 0.0014886856079101562,
+    "tokenizer.per_channel.0.weight": 0.020669061690568924,
+    "tokenizer.per_channel.0.bias": 0.0027008168399333954,
+    "tokenizer.per_channel.2.weight": 0.018925894051790237,
+    "tokenizer.per_channel.2.bias": 0.001626799232326448,
+    "tokenizer.attention.weight": 0.0,
+    "tokenizer.attention.bias": 0.0,
+    "tokenizer.fuse.0.weight": 0.011594965122640133,
+    "tokenizer.fuse.0.bias": 0.0012129388051107526,
+    "tokenizer.fuse.2.weight": 0.01576988771557808,
+    "tokenizer.fuse.2.bias": 0.000941276375669986,
+    "tokenizer.prob.weight": 0.07127497345209122,
+    "tokenizer.prob.bias": 0.0025402226019650698,
+    "tokenizer.token.weight": 0.0008443037513643503,
+    "tokenizer.token.bias": 3.69119479728397e-05
+  },
+  "all_head_gradient_finite_nonzero": false
+}

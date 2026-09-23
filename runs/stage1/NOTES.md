@@ -247,3 +247,10 @@ python scripts/build_montages.py --report     # 逐 montage 解析覆盖率自�
 - C=1 GPU 训练：4096 train、4 epochs；C=8 GPU 训练：1024 train、4 epochs。详细结果见 `reports/gate1_shared_weights/revalidation_20260923/`。
 - Gate 1：**FAIL**。C=1 test known macro-F1=0.2864、macro-AUROC=0.6479；C=8 test known macro-F1=0.2849、macro-AUROC=0.6013。阶段 2 不得开始。
 - 失败定位：harmonic/ocular 路由概率校准与判别能力不足；C=8 训练规模仍低于正式性能实验要求。
+
+## 2026-09-23 v3 修订
+
+- T1.4：✅ 真混音代码与单测完成；C=1 回归不再标记“运行中”。
+- T1.5：⚠️ 多通道 smoke 已完成；正式 Gate 1 重验证因路由诊断 FAIL 停止，不能标记完成。
+- 参数量口径修订：共享权重指专家/空间头不按 C 复制；整模型仍包含按输入通道数变化的 stem、统计融合等参数，因此整模型参数量随 C 变化。报告中“固定参数量”仅适用于共享专家主体，不能用于整模型。
+- v3 固定 64 样本过拟合：C=1 与 C=8 均未达到每类 F1/AUROC ≥0.98，按停机规则未运行更大实验，Gate 1 继续 FAIL。
