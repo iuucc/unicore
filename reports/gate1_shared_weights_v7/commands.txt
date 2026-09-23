@@ -1,0 +1,5 @@
+$env:CUDA_VISIBLE_DEVICES = "0"
+$PY = "D:\Anaconda_envs\envs\unicore-eeg\python.exe"
+& $PY scripts/first_experiment.py --epochs 4 --train-samples 4096 --val-samples 1200 --eval-samples 1200 --channels 1 --batch-size 24 --num-workers 0 --out runs/gate1_gateA_v1/c1 --selection-metric known_macro_auroc
+& $PY scripts/calibrate_routing.py --checkpoint runs/gate1_gateA_v1/c1/best.pt --out runs/gate1_gateA_v1/c1/calibration --split val --samples 1200 --channels 1 --batch-size 24 --seed 100042
+& $PY scripts/calibrate_routing.py --checkpoint runs/gate1_gateA_v1/c1/best.pt --out runs/gate1_gateA_v1/c1/calibration --split test --samples 1200 --channels 1 --batch-size 24 --seed 1000042 --thresholds runs/gate1_gateA_v1/c1/calibration/routing_val.json
