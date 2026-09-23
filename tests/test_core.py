@@ -35,7 +35,7 @@ from unicore_eeg.runtime import (
     configure_runtime,
     dataloader_kwargs,
 )
-from unicore_eeg.synthetic import SyntheticEEGDataset
+from unicore_eeg.synthetic import PublicSignalPools, SyntheticEEGDataset
 
 
 class RouterTests(unittest.TestCase):
@@ -1280,6 +1280,21 @@ class SyntheticMixingTests(unittest.TestCase):
 
         coords, mask = M.resolve_montage(self.LAYOUT)
         self.coords, self.mask = coords, mask
+
+    def test_public_source_splits_are_disjoint(self) -> None:
+        """公共源池的 train/val/test 原始索引必须严格不相交。"""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "eegdenoisenet"
+            root.mkdir(parents=True)
+            shape = (20, 32)
+            for name in ("EEG_all_epochs_512hz.npy", "EOG_all_epochs.npy", "EMG_all_epochs_512hz.npy"):
+                np.save(root / name, np.zeros(shape, dtype=np.float32))
+            manifests = {split: PublicSignalPools(directory, split=split).split_manifest() for split in ("train", "val", "test")}
+            for kind in manifests["train"]:
+                sets = [set(manifests[split][kind]) for split in manifests]
+                expected = len(set.union(*sets))
+                self.assertEqual(expected, 20 if kind != "ecg" else 0)
+                self.assertTrue(all(not (sets[i] & sets[j]) for i in range(3) for j in range(i + 1, 3)))
 
     def _dataset(self, channels: int = 8, use_coords: bool = True, samples: int = 4):
         dataset = SyntheticEEGDataset(

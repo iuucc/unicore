@@ -108,6 +108,8 @@ def parse_args() -> tuple[argparse.Namespace, dict[str, Any] | None]:
     parser.add_argument("--montage-channels", nargs="+", default=argparse.SUPPRESS,
                         help="从 montage 的参考表里选一个子集（如 C=8 的合成训练）")
     parser.add_argument("--out", type=Path, default=argparse.SUPPRESS)
+    parser.add_argument("--skip-eval", action="store_true", default=argparse.SUPPRESS,
+                        help="只训练并保存 checkpoint；测试必须由 validation 校准后单独运行")
     parsed = parser.parse_args()
     explicit = set(vars(parsed))
     settings, config = resolve_settings(parsed, DEFAULTS, parsed.config, CONFIG_MAP)
@@ -495,6 +497,9 @@ def main() -> None:
     )
     if not args.checkpoint:
         train_model(model, train_loader, args, device, spatial)
+    if args.skip_eval:
+        print("training complete; evaluation skipped (calibrate on validation before test)")
+        return
     frame, diagnostics = evaluate(model, eval_loader, device, spatial)
     write_report(frame, diagnostics, args.out)
     print(f"report={args.out / 'report.md'}")

@@ -45,7 +45,16 @@ def _resample_1d(source: Tensor, length: int) -> Tensor:
 
 
 class PublicSignalPools:
+    """只读公共源池，按确定性 60/20/20 源索引切分。
+
+    ``split`` 不能再把所有非 train 值都当成 test：validation 必须拥有独立
+    的 clean/EOG/EMG/ECG 源索引，且与 train/test 没有交集。
+    """
+    SPLIT_RANGES = {"train": (0.0, 0.6), "val": (0.6, 0.8), "test": (0.8, 1.0)}
+
     def __init__(self, root: Path | str = "data/raw", split: str = "train", sample_rate: int = 500) -> None:
+        if split not in self.SPLIT_RANGES:
+            raise ValueError(f"split must be one of {tuple(self.SPLIT_RANGES)}, got {split!r}")
         self.root = Path(root)
         self.split = split
         self.sample_rate = sample_rate
@@ -54,6 +63,22 @@ class PublicSignalPools:
         self.eog = self._load_npy(eeg_root / "EOG_all_epochs.npy")
         self.emg = self._load_npy(eeg_root / "EMG_all_epochs_512hz.npy")
         self.ecg = self._load_ecg(self.root / "mitdb")
+
+    def source_indices(self, kind: str) -> list[int]:
+        """返回该 split 可使用的原始源索引（便于登记和防泄漏测试）。"""
+        arrays = {"clean": self.clean, "eog": self.eog, "emg": self.emg, "ecg": self.ecg}
+        if kind not in arrays:
+            raise KeyError(kind)
+        count = len(arrays[kind]) if arrays[kind] is not None else 0
+        start_ratio, end_ratio = self.SPLIT_RANGES[self.split]
+        low = int(math.floor(count * start_ratio))
+        high = int(math.floor(count * end_ratio)) if end_ratio < 1.0 else count
+        if count and high <= low:
+            high = min(count, low + 1)
+        return list(range(low, high))
+
+    def split_manifest(self) -> dict[str, object]:
+        return {kind: self.source_indices(kind) for kind in ("clean", "eog", "emg", "ecg")}
 
     @staticmethod
     def _load_npy(path: Path) -> np.ndarray | None:
@@ -79,8 +104,10 @@ class PublicSignalPools:
     def _pick(self, array: np.ndarray | None, generator: torch.Generator, length: int) -> Tensor | None:
         if array is None or len(array) == 0:
             return None
-        boundary = max(int(len(array) * 0.8), 1)
-        low, high = (0, boundary) if self.split == "train" else (boundary, len(array))
+        indices = self.source_indices("clean" if array is self.clean else "eog" if array is self.eog else "emg")
+        if not indices:
+            return None
+        low, high = min(indices), max(indices) + 1
         if high <= low:
             low, high = 0, len(array)
         segment_count = max(math.ceil(length / int(array.shape[-1])), 1)
@@ -103,8 +130,10 @@ class PublicSignalPools:
     def ecg_epoch(self, generator: torch.Generator, length: int) -> Tensor | None:
         if not self.ecg:
             return None
-        boundary = max(int(len(self.ecg) * 0.8), 1)
-        low, high = (0, boundary) if self.split == "train" else (boundary, len(self.ecg))
+        indices = self.source_indices("ecg")
+        if not indices:
+            return None
+        low, high = min(indices), max(indices) + 1
         if high <= low:
             low, high = 0, len(self.ecg)
         record, source_rate = self.ecg[int(torch.randint(low, high, (), generator=generator))]

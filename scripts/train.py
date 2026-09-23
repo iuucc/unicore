@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from unicore_eeg import UniCOREEG, UniCOREEGConfig, paths
@@ -100,21 +100,27 @@ def main() -> None:
     if args.data_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
 
-    dataset = SyntheticEEGDataset(
+    train_set = SyntheticEEGDataset(
         samples=args.samples,
         channels=args.channels,
         length=args.length,
         sample_rate=args.sample_rate,
         use_public_sources=args.use_public_sources,
         data_root=args.data_root,
+        seed=123,
+        split="train",
     )
-    train_len = int(0.9 * len(dataset))
-    val_len = len(dataset) - train_len
-    train_set, val_set = random_split(
-        dataset,
-        (train_len, val_len),
-        generator=torch.Generator().manual_seed(123),
+    val_set = SyntheticEEGDataset(
+        samples=max(1, int(round(args.samples * 0.1))),
+        channels=args.channels,
+        length=args.length,
+        sample_rate=args.sample_rate,
+        use_public_sources=args.use_public_sources,
+        data_root=args.data_root,
+        seed=456,
+        split="val",
     )
+    train_len, val_len = len(train_set), len(val_set)
     loader_kwargs = dataloader_kwargs(args.batch_size, args.num_workers, device)
     train_loader = DataLoader(train_set, shuffle=True, **loader_kwargs)
     val_loader = DataLoader(val_set, shuffle=False, **loader_kwargs)
@@ -143,7 +149,12 @@ def main() -> None:
             "sample_rate": args.sample_rate,
             "use_public_sources": args.use_public_sources,
             "data_root": str(args.data_root),
-            "split_generator_seed": 123,
+            "split_seeds": {"train": 123, "val": 456, "test": 789},
+            "public_source_splits": {
+                split: SyntheticEEGDataset(samples=1, channels=args.channels, use_public_sources=True,
+                    data_root=args.data_root, split=split).public.split_manifest()
+                for split in ("train", "val", "test")
+            } if args.use_public_sources else None,
         },
         extra={"runtime": runtime, "loss_weights": dict(loss_fn.weights.__dict__)},
     )
