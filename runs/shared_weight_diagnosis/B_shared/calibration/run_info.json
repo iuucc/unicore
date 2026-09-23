@@ -1,0 +1,6 @@
+{
+  "checkpoint": "runs\\shared_weight_diagnosis\\B_shared\\epoch_04.pt",
+  "validation_seed": 100042,
+  "test_seed": 1000042,
+  "threshold_source": "validation_only"
+}
