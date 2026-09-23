@@ -1,0 +1,398 @@
+{
+  "command": [
+    "scripts/simple_routing_baseline.py",
+    "--out",
+    "reports/gate1_shared_weights_v4/simple_baseline.json",
+    "--train-samples",
+    "4096",
+    "--val-samples",
+    "1024",
+    "--test-samples",
+    "1024",
+    "--channels",
+    "1",
+    "--mode",
+    "first_experiment"
+  ],
+  "model_status": {
+    "harmonic": "logistic_regression",
+    "ocular_drift": "logistic_regression",
+    "myogenic": "logistic_regression",
+    "cardiac": "logistic_regression",
+    "motion_transient": "logistic_regression",
+    "unknown": "logistic_regression"
+  },
+  "thresholds_from_validation": {
+    "harmonic": 0.550000011920929,
+    "ocular_drift": 0.8500000238418579,
+    "myogenic": 0.8500000238418579,
+    "cardiac": 0.8999999761581421,
+    "motion_transient": 0.800000011920929,
+    "unknown": 0.3499999940395355
+  },
+  "validation": {
+    "metrics": [
+      {
+        "class": "harmonic",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.3480392156862745,
+        "recall": 0.8255813953488372,
+        "f1": 0.4896551724137931,
+        "auroc": 0.9169688377545735,
+        "auprc": 0.552875434412556,
+        "support": 86.0,
+        "false_positive_rate": 0.1559202813599062,
+        "false_negative_rate": 0.1744186046511628,
+        "ece": 0.19830002013645487,
+        "brier": 0.12354236841201782,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.78,
+            "f1": 0.49101796407185627,
+            "fpr": 0.04689331770222743
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.77,
+            "f1": 0.5,
+            "fpr": 0.05041031652989449
+          }
+        }
+      },
+      {
+        "class": "ocular_drift",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.8933333333333333,
+        "recall": 0.7790697674418605,
+        "f1": 0.8322981366459627,
+        "auroc": 0.9850186755364105,
+        "auprc": 0.9115387878969993,
+        "support": 86.0,
+        "false_positive_rate": 0.009378663540445486,
+        "false_negative_rate": 0.22093023255813954,
+        "ece": 0.09534534924248028,
+        "brier": 0.05015518516302109,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.85,
+            "f1": 0.8322981366459627,
+            "fpr": 0.009378663540445486
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.85,
+            "f1": 0.8322981366459627,
+            "fpr": 0.009378663540445486
+          }
+        }
+      },
+      {
+        "class": "myogenic",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.676056338028169,
+        "recall": 0.5581395348837209,
+        "f1": 0.6114649681528662,
+        "auroc": 0.9264565555222335,
+        "auprc": 0.6208405342785877,
+        "support": 86.0,
+        "false_positive_rate": 0.026963657678780773,
+        "false_negative_rate": 0.4418604651162791,
+        "ece": 0.16956011273752386,
+        "brier": 0.10868211090564728,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.8400000000000001,
+            "f1": 0.6163522012578616,
+            "fpr": 0.02813599062133646
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.8400000000000001,
+            "f1": 0.6163522012578616,
+            "fpr": 0.02813599062133646
+          }
+        }
+      },
+      {
+        "class": "cardiac",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.8904109589041096,
+        "recall": 0.7647058823529411,
+        "f1": 0.8227848101265823,
+        "auroc": 0.9844193415070946,
+        "auprc": 0.9162321408431277,
+        "support": 85.0,
+        "false_positive_rate": 0.00936768149882904,
+        "false_negative_rate": 0.23529411764705882,
+        "ece": 0.09665839652966261,
+        "brier": 0.05344349518418312,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.91,
+            "f1": 0.8311688311688312,
+            "fpr": 0.00585480093676815
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.91,
+            "f1": 0.8311688311688312,
+            "fpr": 0.00585480093676815
+          }
+        }
+      },
+      {
+        "class": "motion_transient",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.8382352941176471,
+        "recall": 0.6705882352941176,
+        "f1": 0.7450980392156863,
+        "auroc": 0.9451715112274418,
+        "auprc": 0.8047465890562234,
+        "support": 85.0,
+        "false_positive_rate": 0.01288056206088993,
+        "false_negative_rate": 0.32941176470588235,
+        "ece": 0.1754297362511563,
+        "brier": 0.09360864013433456,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.78,
+            "f1": 0.7515923566878981,
+            "fpr": 0.01522248243559719
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.78,
+            "f1": 0.7515923566878981,
+            "fpr": 0.01522248243559719
+          }
+        }
+      },
+      {
+        "class": "unknown",
+        "valid_samples": 1024,
+        "masked_samples": 0,
+        "precision": 0.5212649945474372,
+        "recall": 0.9372549019607843,
+        "f1": 0.6699369306236861,
+        "auroc": 0.6206950484473945,
+        "auprc": 0.6541767253649836,
+        "support": 510.0,
+        "false_positive_rate": 0.8540856031128404,
+        "false_negative_rate": 0.06274509803921569,
+        "ece": 0.0489537286630366,
+        "brier": 0.23543471097946167,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.65,
+            "f1": 0.28109854604200324,
+            "fpr": 0.042801556420233464
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.62,
+            "f1": 0.3593519882179676,
+            "fpr": 0.0914396887159533
+          }
+        }
+      }
+    ],
+    "summary": {
+      "known_macro_f1": 0.7002602253109781,
+      "known_macro_auroc": 0.9516069843095508,
+      "known_macro_auprc": 0.7612466972974989,
+      "six_class_macro_f1": 0.695206342863096,
+      "macro_auroc": 0.8964549949991915,
+      "macro_auprc": 0.743401701975413,
+      "unknown_f1": 0.6699369306236861,
+      "unknown_auroc": 0.6206950484473945,
+      "micro_f1": 0.670076726342711
+    }
+  },
+  "test": {
+    "metrics": [
+      {
+        "class": "harmonic",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.32272727272727275,
+        "recall": 0.8255813953488372,
+        "f1": 0.46405228758169936,
+        "auroc": 0.9064042094931705,
+        "auprc": 0.5622800793249347,
+        "support": 86.0,
+        "false_positive_rate": 0.1746776084407972,
+        "false_negative_rate": 0.1744186046511628,
+        "ece": 0.21362984118957362,
+        "brier": 0.13527244329452515,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.8300000000000001,
+            "f1": 0.484472049689441,
+            "fpr": 0.04220398593200469
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.79,
+            "f1": 0.5245901639344263,
+            "fpr": 0.05744431418522861
+          }
+        }
+      },
+      {
+        "class": "ocular_drift",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.9090909090909091,
+        "recall": 0.6976744186046512,
+        "f1": 0.7894736842105263,
+        "auroc": 0.9773167207393877,
+        "auprc": 0.8735637715751257,
+        "support": 86.0,
+        "false_positive_rate": 0.007033997655334115,
+        "false_negative_rate": 0.3023255813953488,
+        "ece": 0.09779922484447018,
+        "brier": 0.05591732636094093,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.8300000000000001,
+            "f1": 0.7973856209150327,
+            "fpr": 0.007033997655334115
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.8300000000000001,
+            "f1": 0.7973856209150327,
+            "fpr": 0.007033997655334115
+          }
+        }
+      },
+      {
+        "class": "myogenic",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.6533333333333333,
+        "recall": 0.5697674418604651,
+        "f1": 0.6086956521739131,
+        "auroc": 0.940565446168107,
+        "auprc": 0.6335475105084322,
+        "support": 86.0,
+        "false_positive_rate": 0.03048065650644783,
+        "false_negative_rate": 0.43023255813953487,
+        "ece": 0.17828570712948882,
+        "brier": 0.10944651067256927,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.8200000000000001,
+            "f1": 0.6368715083798883,
+            "fpr": 0.04220398593200469
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.8200000000000001,
+            "f1": 0.6368715083798883,
+            "fpr": 0.04220398593200469
+          }
+        }
+      },
+      {
+        "class": "cardiac",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.8970588235294118,
+        "recall": 0.7176470588235294,
+        "f1": 0.7973856209150327,
+        "auroc": 0.9681774349083896,
+        "auprc": 0.8644808394664354,
+        "support": 85.0,
+        "false_positive_rate": 0.00819672131147541,
+        "false_negative_rate": 0.2823529411764706,
+        "ece": 0.1042934027763284,
+        "brier": 0.0638124942779541,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.78,
+            "f1": 0.8044692737430168,
+            "fpr": 0.02576112412177986
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.78,
+            "f1": 0.8044692737430168,
+            "fpr": 0.02576112412177986
+          }
+        }
+      },
+      {
+        "class": "motion_transient",
+        "valid_samples": 939,
+        "masked_samples": 85,
+        "precision": 0.7727272727272727,
+        "recall": 0.6,
+        "f1": 0.6754966887417219,
+        "auroc": 0.9294393167102907,
+        "auprc": 0.7537615189176575,
+        "support": 85.0,
+        "false_positive_rate": 0.01756440281030445,
+        "false_negative_rate": 0.4,
+        "ece": 0.1721088892311112,
+        "brier": 0.09848397970199585,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.75,
+            "f1": 0.6946107784431138,
+            "fpr": 0.02810304449648712
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.75,
+            "f1": 0.6946107784431138,
+            "fpr": 0.02810304449648712
+          }
+        }
+      },
+      {
+        "class": "unknown",
+        "valid_samples": 1024,
+        "masked_samples": 0,
+        "precision": 0.5190839694656488,
+        "recall": 0.9333333333333333,
+        "f1": 0.6671338472319551,
+        "auroc": 0.6170214389257649,
+        "auprc": 0.6537355675226904,
+        "support": 510.0,
+        "false_positive_rate": 0.857976653696498,
+        "false_negative_rate": 0.06666666666666667,
+        "ece": 0.049226066534174606,
+        "brier": 0.23532947897911072,
+        "operating_points": {
+          "fpr_le_0.05": {
+            "threshold": 0.65,
+            "f1": 0.3089171974522293,
+            "fpr": 0.04085603112840467
+          },
+          "fpr_le_0.10": {
+            "threshold": 0.62,
+            "f1": 0.362555720653789,
+            "fpr": 0.07976653696498054
+          }
+        }
+      }
+    ],
+    "summary": {
+      "known_macro_f1": 0.6670207867245787,
+      "known_macro_auroc": 0.9443806256038692,
+      "known_macro_auprc": 0.7375267439585171,
+      "six_class_macro_f1": 0.6670396301424747,
+      "macro_auroc": 0.8898207611575183,
+      "macro_auprc": 0.7235615478858793,
+      "unknown_f1": 0.6671338472319551,
+      "unknown_auroc": 0.6170214389257649,
+      "micro_f1": 0.6536170212765957
+    }
+  },
+  "data_config": {
+    "out": "reports\\gate1_shared_weights_v4\\simple_baseline.json",
+    "train_samples": 4096,
+    "val_samples": 1024,
+    "test_samples": 1024,
+    "channels": 1,
+    "length": 1000,
+    "sample_rate": 500,
+    "seed": 42,
+    "mode": "first_experiment"
+  }
+}

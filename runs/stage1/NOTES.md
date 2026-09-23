@@ -254,3 +254,11 @@ python scripts/build_montages.py --report     # 逐 montage 解析覆盖率自�
 - T1.5：⚠️ 多通道 smoke 已完成；正式 Gate 1 重验证因路由诊断 FAIL 停止，不能标记完成。
 - 参数量口径修订：共享权重指专家/空间头不按 C 复制；整模型仍包含按输入通道数变化的 stem、统计融合等参数，因此整模型参数量随 C 变化。报告中“固定参数量”仅适用于共享专家主体，不能用于整模型。
 - v3 固定 64 样本过拟合：C=1 与 C=8 均未达到每类 F1/AUROC ≥0.98，按停机规则未运行更大实验，Gate 1 继续 FAIL。
+
+## 2026-09-23 v4 评估器修订
+
+- 修复路由评估：逐类 precision/recall/F1/AUROC/AUPRC/FPR/FNR/ECE/Brier、validation 阈值校准与 `best.pt` 选择均按 `label_mask` 排除 held-out 已知类样本；Unknown 单独按真实 Unknown 目标评估。
+- 修复 64 样本诊断：C=1 attention 参数因单通道 softmax 恒为 1 而无梯度，不再作为失败项；梯度审计改为 5 个 known 概率输出行与真正的 `unknown_detector`。
+- v4 固定 64 样本结果：C=1 known macro-F1@0.5=0.6000、known macro-AUROC=0.9653、同 64 样本校准 known macro-F1=0.8288；C=8 known macro-F1@0.5=0.9200、known macro-AUROC=0.9959、同 64 样本校准 known macro-F1=0.9600；两者六头梯度均有限非零。
+- 结论修订：v3 的“64 样本过拟合失败可指向模型结构问题”不成立；但 v4 仍未达到 known macro-F1 ≥0.98，Gate 1 继续 FAIL，Stage 2 仍不得开始。
+- 新增证据目录：`reports/gate1_shared_weights_v4/`，包含逐样本 labels/label_mask/probabilities/logits/disabled_experts、10000 样本审计和简单分类 baseline。

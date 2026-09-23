@@ -1,0 +1,11 @@
+git fetch origin
+git checkout codex/gate1-shared-weights
+git pull --ff-only origin codex/gate1-shared-weights
+$env:CUDA_VISIBLE_DEVICES = "0"
+$PY = "D:\Anaconda_envs\envs\unicore-eeg\python.exe"
+& $PY scripts/router_overfit.py --channels 1 --out reports/gate1_shared_weights_v4 --steps 300 --batch-size 8
+& $PY scripts/router_overfit.py --channels 8 --out reports/gate1_shared_weights_v4 --steps 300 --batch-size 8
+& $PY scripts/dataset_audit.py --out reports/gate1_shared_weights_v4/dataset_audit_10000.json --samples 10000 --channels 1 --mode first_experiment
+& $PY scripts/simple_routing_baseline.py --out reports/gate1_shared_weights_v4/simple_baseline.json --train-samples 4096 --val-samples 1024 --test-samples 1024 --channels 1 --mode first_experiment
+& $PY -m compileall -q unicore_eeg scripts tests
+& $PY -m pytest -q

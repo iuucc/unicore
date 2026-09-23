@@ -1,0 +1,144 @@
+{
+  "command": [
+    "scripts/dataset_audit.py",
+    "--out",
+    "reports/gate1_shared_weights_v4/dataset_audit_10000.json",
+    "--samples",
+    "10000",
+    "--channels",
+    "1",
+    "--mode",
+    "first_experiment"
+  ],
+  "data_config": {
+    "samples": 10000,
+    "channels": 1,
+    "length": 1000,
+    "sample_rate": 500,
+    "mode": "first_experiment",
+    "use_public_sources": false,
+    "data_root": "data\\raw"
+  },
+  "splits": {
+    "train": {
+      "samples": 10000,
+      "seed": 42,
+      "positive_by_class": {
+        "harmonic": 834,
+        "ocular_drift": 834,
+        "myogenic": 834,
+        "cardiac": 833,
+        "motion_transient": 833,
+        "unknown": 4998
+      },
+      "masked_by_class": {
+        "harmonic": 833,
+        "ocular_drift": 833,
+        "myogenic": 833,
+        "cardiac": 833,
+        "motion_transient": 833,
+        "unknown": 0
+      },
+      "clean": 834,
+      "single_artifact": 4168,
+      "compound_artifact": 0,
+      "unknown": 4998,
+      "condition_counts": {
+        "0": 834,
+        "1": 834,
+        "2": 834,
+        "3": 834,
+        "4": 833,
+        "5": 833,
+        "6": 833,
+        "7": 833,
+        "8": 833,
+        "9": 833,
+        "10": 833,
+        "11": 833
+      },
+      "available_source_indices_for_split": null,
+      "used_source_indices": null
+    },
+    "val": {
+      "samples": 10000,
+      "seed": 100042,
+      "positive_by_class": {
+        "harmonic": 834,
+        "ocular_drift": 834,
+        "myogenic": 834,
+        "cardiac": 833,
+        "motion_transient": 833,
+        "unknown": 4998
+      },
+      "masked_by_class": {
+        "harmonic": 833,
+        "ocular_drift": 833,
+        "myogenic": 833,
+        "cardiac": 833,
+        "motion_transient": 833,
+        "unknown": 0
+      },
+      "clean": 834,
+      "single_artifact": 4168,
+      "compound_artifact": 0,
+      "unknown": 4998,
+      "condition_counts": {
+        "0": 834,
+        "1": 834,
+        "2": 834,
+        "3": 834,
+        "4": 833,
+        "5": 833,
+        "6": 833,
+        "7": 833,
+        "8": 833,
+        "9": 833,
+        "10": 833,
+        "11": 833
+      },
+      "available_source_indices_for_split": null,
+      "used_source_indices": null
+    },
+    "test": {
+      "samples": 10000,
+      "seed": 1000042,
+      "positive_by_class": {
+        "harmonic": 834,
+        "ocular_drift": 834,
+        "myogenic": 834,
+        "cardiac": 833,
+        "motion_transient": 833,
+        "unknown": 4998
+      },
+      "masked_by_class": {
+        "harmonic": 833,
+        "ocular_drift": 833,
+        "myogenic": 833,
+        "cardiac": 833,
+        "motion_transient": 833,
+        "unknown": 0
+      },
+      "clean": 834,
+      "single_artifact": 4168,
+      "compound_artifact": 0,
+      "unknown": 4998,
+      "condition_counts": {
+        "0": 834,
+        "1": 834,
+        "2": 834,
+        "3": 834,
+        "4": 833,
+        "5": 833,
+        "6": 833,
+        "7": 833,
+        "8": 833,
+        "9": 833,
+        "10": 833,
+        "11": 833
+      },
+      "available_source_indices_for_split": null,
+      "used_source_indices": null
+    }
+  }
+}
