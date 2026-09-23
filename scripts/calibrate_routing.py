@@ -1,7 +1,7 @@
 """在 validation 上冻结路由阈值，并可对冻结后的 test 运行一次诊断。
 
-该脚本不读取或调整 test 指标；``--split val`` 只产生校准结果，传入
-``--test-checkpoint`` 时才会在相同 checkpoint 上对 test 做一次最终评估。
+该脚本不读取或调整 test 指标；``--split val`` 只产生校准结果，``--split test``
+必须传入 validation JSON 中冻结的阈值。
 """
 from __future__ import annotations
 
@@ -21,77 +21,47 @@ if str(ROOT) not in sys.path:
 
 from unicore_eeg import ARTIFACT_NAMES, UniCOREEG, UniCOREEGConfig
 from unicore_eeg.batching import collate_variable_channels
+from unicore_eeg.routing_metrics import masked_routing_metrics, masked_threshold_calibration
 from unicore_eeg.synthetic import SyntheticEEGDataset
 
 
-def _ece(prob: np.ndarray, target: np.ndarray, bins: int = 10) -> float:
-    edges = np.linspace(0.0, 1.0, bins + 1)
-    result = 0.0
-    for low, high in zip(edges[:-1], edges[1:]):
-        mask = (prob >= low) & (prob <= high if high == 1 else prob < high)
-        if mask.any():
-            result += float(mask.mean()) * abs(float(prob[mask].mean()) - float(target[mask].mean()))
-    return result
-
-
-def _collect(model: UniCOREEG, loader: DataLoader, device: torch.device) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    labels, probs, presence, routes = [], [], [], []
+def _collect(
+    model: UniCOREEG,
+    loader: DataLoader,
+    device: torch.device,
+    *,
+    use_spatial: bool,
+    coords_mask: torch.Tensor | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    labels, masks, probs, logits, presence, routes, disabled, sample_ids = [], [], [], [], [], [], [], []
     model.eval()
     with torch.no_grad():
         for batch in loader:
             batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
+            spatial_kwargs = {}
+            if use_spatial:
+                spatial_kwargs = {"coords": batch["coords"], "coords_mask": coords_mask}
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
                 output = model(batch["noisy"], metadata=batch["metadata"],
-                    disabled_experts=batch["disabled_experts"], route_mode="learned")
+                    **spatial_kwargs, disabled_experts=batch["disabled_experts"], route_mode="learned")
             labels.append(batch["labels"].float().cpu().numpy())
+            masks.append(batch["label_mask"].float().cpu().numpy())
             probs.append(output["probabilities"].float().cpu().numpy())
+            logits.append(output["probability_logits"].float().cpu().numpy())
             presence.append(output["artifact_presence_probability"].float().cpu().numpy())
             routes.append(output["route"].float().cpu().numpy())
-    return np.concatenate(labels), np.concatenate(probs), np.concatenate(presence), np.concatenate(routes)
-
-
-def _metrics(labels: np.ndarray, probs: np.ndarray, thresholds: np.ndarray) -> tuple[list[dict[str, object]], dict[str, float]]:
-    from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
-    pred = probs >= thresholds[None, :]
-    rows: list[dict[str, object]] = []
-    for index, name in enumerate(ARTIFACT_NAMES):
-        y, p, z = labels[:, index], probs[:, index], pred[:, index]
-        tp = float(((z == 1) & (y == 1)).sum()); fp = float(((z == 1) & (y == 0)).sum())
-        fn = float(((z == 0) & (y == 1)).sum()); tn = float(((z == 0) & (y == 0)).sum())
-        ops = {}
-        for limit in (0.05, 0.10):
-            feasible = []
-            for candidate in np.linspace(0.01, 0.99, 99):
-                candidate_pred = p >= candidate
-                candidate_fp = float(((candidate_pred == 1) & (y == 0)).sum())
-                candidate_tn = float(((candidate_pred == 0) & (y == 0)).sum())
-                fpr = candidate_fp / max(candidate_fp + candidate_tn, 1.0)
-                if fpr <= limit:
-                    feasible.append((float(f1_score(y, candidate_pred, zero_division=0)), float(candidate), fpr))
-            ops[f"fpr_le_{limit:.2f}"] = (max(feasible) if feasible else "not feasible")
-        rows.append({"class": name, "precision": float(precision_score(y, z, zero_division=0)),
-            "recall": float(recall_score(y, z, zero_division=0)), "f1": float(f1_score(y, z, zero_division=0)),
-            "auroc": float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else float("nan"),
-            "auprc": float(average_precision_score(y, p)) if y.sum() else float("nan"),
-            "support": float(y.sum()), "false_positive_rate": fp / max(fp + tn, 1.0),
-            "false_negative_rate": fn / max(fn + tp, 1.0), "ece": _ece(p, y),
-            "brier": float(np.mean((p - y) ** 2)), "operating_points": ops})
-    known = pred[:, :5]; known_y = labels[:, :5]
-    known_auroc = [roc_auc_score(labels[:, i], probs[:, i]) for i in range(5) if len(np.unique(labels[:, i])) == 2]
-    known_auprc = [average_precision_score(labels[:, i], probs[:, i]) for i in range(5) if labels[:, i].sum()]
-    summary = {"known_macro_f1": float(f1_score(known_y, known, average="macro", zero_division=0)),
-        "known_macro_auroc": float(np.mean(known_auroc)), "known_macro_auprc": float(np.mean(known_auprc)),
-        "six_class_macro_f1": float(f1_score(labels, pred, average="macro", zero_division=0)),
-        "micro_f1": float(f1_score(labels, pred, average="micro", zero_division=0)),
-        "macro_auroc": float(np.nanmean([row["auroc"] for row in rows])),
-        "macro_auprc": float(np.nanmean([row["auprc"] for row in rows]))}
-    return rows, summary
-
-
-def _calibrate(labels: np.ndarray, probs: np.ndarray) -> np.ndarray:
-    from sklearn.metrics import f1_score
-    grid = np.linspace(0.05, 0.95, 19)
-    return np.asarray([max(grid, key=lambda t: f1_score(labels[:, i], probs[:, i] >= t, zero_division=0)) for i in range(labels.shape[1])])
+            disabled.append(batch["disabled_experts"].float().cpu().numpy())
+            sample_ids.append(batch["sample_id"].cpu().numpy())
+    return (
+        np.concatenate(labels),
+        np.concatenate(masks),
+        np.concatenate(probs),
+        np.concatenate(logits),
+        np.concatenate(presence),
+        np.concatenate(routes),
+        np.concatenate(disabled),
+        np.concatenate(sample_ids),
+    )
 
 
 def main() -> None:
@@ -99,7 +69,6 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--split", choices=("val", "test"), default="val")
-    parser.add_argument("--test-checkpoint", type=Path)
     parser.add_argument("--thresholds", type=Path, help="validation routing JSON；test 模式必须提供")
     parser.add_argument("--samples", type=int, default=512)
     parser.add_argument("--channels", type=int, default=1)
@@ -121,25 +90,30 @@ def main() -> None:
     model = UniCOREEG(model_config).to(device)
     model.load_state_dict(checkpoint["model"]); model.eval()
     coords = None
+    coords_mask = None
     if args.montage:
         from unicore_eeg.montage import load_montage, resolve_channels
         spec = load_montage(args.montage)
         names = list(args.montage_channels or spec.channels)
-        _, coords, _ = resolve_channels(names, spec)
+        _, coords, coords_mask = resolve_channels(names, spec)
+        coords = spec.to_head_ras(coords.float())
         args.channels = len(names)
     dataset = SyntheticEEGDataset(samples=args.samples, channels=args.channels, seed=args.seed,
         mode="first_experiment", split=args.split, use_public_sources=args.use_public_sources,
-        data_root=args.data_root, montage_coords=coords)
+        data_root=args.data_root, montage_coords=coords, montage_mask=coords_mask)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=collate_variable_channels)
-    labels, probs, presence, routes = _collect(model, loader, device)
+    device_coords_mask = None if coords_mask is None or bool(coords_mask.all()) else coords_mask.to(device)
+    labels, masks, probs, logits, presence, routes, disabled, sample_ids = _collect(
+        model, loader, device, use_spatial=args.montage is not None, coords_mask=device_coords_mask
+    )
     if args.split == "val":
-        thresholds = _calibrate(labels, probs)
+        thresholds = masked_threshold_calibration(labels, probs, masks)
     else:
         if args.thresholds is None:
             raise SystemExit("test evaluation requires --thresholds from a completed validation calibration")
         frozen = json.loads(args.thresholds.read_text(encoding="utf-8"))["thresholds"]
         thresholds = np.asarray([float(frozen[name]) for name in ARTIFACT_NAMES])
-    rows, summary = _metrics(labels, probs, thresholds)
+    rows, summary = masked_routing_metrics(labels, probs, thresholds, masks)
     checkpoint_sha256 = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
     payload = {"split": args.split, "checkpoint": str(args.checkpoint), "checkpoint_sha256": checkpoint_sha256,
         "git_sha": __import__("subprocess").check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
@@ -147,7 +121,15 @@ def main() -> None:
         "seed": args.seed, "samples": args.samples, "bypass_source": model_config.bypass_source,
         "thresholds": dict(zip(ARTIFACT_NAMES, thresholds.tolist())),
         "metrics": rows, "summary": summary, "artifact_presence_mean": float(presence.mean()),
-        "source_split_manifest": dataset.public.split_manifest() if dataset.public else None}
+        "source_split_manifest": dataset.public.split_manifest() if dataset.public else None,
+        "per_sample": {
+            "sample_id": sample_ids.tolist(),
+            "labels": labels.tolist(),
+            "label_mask": masks.tolist(),
+            "probabilities": probs.tolist(),
+            "logits": logits.tolist(),
+            "disabled_experts": disabled.tolist(),
+        }}
     payload["expert_activation_matrix"] = routes.mean(axis=0).tolist()
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / f"routing_{args.split}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")

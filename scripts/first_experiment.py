@@ -26,6 +26,7 @@ from unicore_eeg.batching import collate_variable_channels
 from unicore_eeg.losses import UniCORELoss
 from unicore_eeg.manifest import write_run_manifest
 from unicore_eeg.model import count_parameters
+from unicore_eeg.routing_metrics import masked_routing_metrics
 from unicore_eeg.runtime import configure_runtime, dataloader_kwargs
 from unicore_eeg.synthetic import SyntheticEEGDataset
 
@@ -68,6 +69,7 @@ DEFAULTS: dict[str, Any] = {
     "out": paths.RUNS_ROOT / "first_experiment",
     "montage": None,
     "montage_channels": None,
+    "selection_metric": "known_macro_auroc",
 }
 
 #: argparse dest → 配置点分路径。配置文件里取不到的项回落到 DEFAULTS。
@@ -110,6 +112,9 @@ def parse_args() -> tuple[argparse.Namespace, dict[str, Any] | None]:
     parser.add_argument("--montage-channels", nargs="+", default=argparse.SUPPRESS,
                         help="从 montage 的参考表里选一个子集（如 C=8 的合成训练）")
     parser.add_argument("--out", type=Path, default=argparse.SUPPRESS)
+    parser.add_argument("--selection-metric", choices=("known_macro_auroc", "known_macro_f1", "macro_auroc", "six_class_macro_f1"),
+                        default=argparse.SUPPRESS,
+                        help="validation checkpoint 选择指标；所有路由指标都会尊重 label_mask")
     parser.add_argument("--skip-eval", action="store_true", default=argparse.SUPPRESS,
                         help="只训练并保存 checkpoint；测试必须由 validation 校准后单独运行")
     parsed = parser.parse_args()
@@ -174,7 +179,7 @@ def train_model(
     current_stage = ""
     optimizer: torch.optim.Optimizer | None = None
     skipped_steps = 0
-    selection_metric = "macro_auroc"
+    selection_metric = args.selection_metric
     best_metric = float("-inf")
     history: list[dict[str, float]] = []
     for epoch in range(1, args.epochs + 1):
@@ -272,7 +277,7 @@ def evaluate(
     rows: list[dict[str, object]] = []
     routing = {mode: torch.zeros(len(CONDITION_NAMES), len(ARTIFACT_NAMES), device=device) for mode in ROUTE_MODES}
     routing_count = torch.zeros(len(CONDITION_NAMES), device=device)
-    all_labels, all_probabilities, all_artifact_presence = [], [], []
+    all_labels, all_label_masks, all_probabilities, all_artifact_presence = [], [], [], []
 
     for cpu_batch in tqdm(loader, desc="evaluate routes"):
         batch = move_batch(cpu_batch, device)
@@ -289,6 +294,7 @@ def evaluate(
                 )
             if mode == "learned":
                 all_labels.append(batch["labels"].cpu())
+                all_label_masks.append(batch["label_mask"].cpu())
                 all_probabilities.append(outputs["probabilities"].float().cpu())
                 all_artifact_presence.append(outputs["artifact_presence_probability"].float().cpu())
             total_artifact = batch["artifacts"].sum(dim=1)
@@ -332,15 +338,24 @@ def evaluate(
 
     frame = pd.DataFrame(rows)
     labels = torch.cat(all_labels).numpy()
+    label_masks = torch.cat(all_label_masks).numpy()
     probabilities = torch.cat(all_probabilities).numpy()
     artifact_presence = torch.cat(all_artifact_presence).numpy()
     artifact_targets = (labels.sum(axis=1) > 0).astype(np.float32)
+    _, masked_summary = masked_routing_metrics(labels, probabilities, label_mask=label_masks)
     route_metrics = {
-        "macro_f1_at_0_5": float(f1_score(labels, probabilities >= 0.5, average="macro", zero_division=0)),
-        "macro_f1_at_route_threshold": float(
-            f1_score(labels, probabilities >= model.config.probability_threshold, average="macro", zero_division=0)
-        ),
-        "macro_auroc": float(roc_auc_score(labels, probabilities, average="macro")),
+        "macro_f1_at_0_5": masked_summary["six_class_macro_f1"],
+        "macro_f1_at_route_threshold": masked_routing_metrics(
+            labels,
+            probabilities,
+            thresholds=np.full(labels.shape[1], model.config.probability_threshold, dtype=np.float32),
+            label_mask=label_masks,
+        )[1]["six_class_macro_f1"],
+        "known_macro_f1": masked_summary["known_macro_f1"],
+        "known_macro_auroc": masked_summary["known_macro_auroc"],
+        "known_macro_auprc": masked_summary["known_macro_auprc"],
+        "macro_auroc": masked_summary["macro_auroc"],
+        "macro_auprc": masked_summary["macro_auprc"],
         "artifact_presence_auroc": float(roc_auc_score(artifact_targets, artifact_presence)),
         "unknown_detection_auroc": float(roc_auc_score(labels[:, -1], probabilities[:, -1])),
         "unknown_false_activation_clean": float(probabilities[labels.sum(axis=1) == 0, -1].mean()),
@@ -466,6 +481,7 @@ def main() -> None:
             "use_public_sources": args.use_public_sources,
             "data_root": str(args.data_root),
             "split_seeds": {"train": args.seed, "val": args.seed + 100_000, "test": args.seed + 1_000_000},
+            "selection_metric": args.selection_metric,
         },
         extra={
             "route_modes": list(ROUTE_MODES),

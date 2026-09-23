@@ -29,6 +29,7 @@ from unicore_eeg.ds004784 import task_to_labels
 from unicore_eeg.manifest import code_version_hash, git_state, write_run_manifest
 from unicore_eeg.model import ARTIFACT_NAMES, SparseRouter, UniCOREEGConfig, count_parameters
 from unicore_eeg.physiomotion import map_annotation
+from unicore_eeg.routing_metrics import masked_routing_metrics, masked_threshold_calibration
 from unicore_eeg.runtime import (
     TritonMissingError,
     check_ddp_allowed,
@@ -104,6 +105,41 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(float(all_labels[2]), 1.0)
         self.assertEqual(float(all_labels[4]), 1.0)
         self.assertEqual(all_family, 5)
+
+
+class RoutingMetricTests(unittest.TestCase):
+    def test_masked_known_class_does_not_count_as_false_positive(self) -> None:
+        labels = np.zeros((4, 6), dtype=np.float32)
+        masks = np.ones_like(labels)
+        probabilities = np.zeros_like(labels)
+        labels[0, 0] = 1.0
+        probabilities[0, 0] = 0.9
+        labels[1, 5] = 1.0
+        masks[1, 0] = 0.0
+        probabilities[1, 0] = 0.95
+        thresholds = np.full(6, 0.5, dtype=np.float32)
+
+        rows, summary = masked_routing_metrics(labels, probabilities, thresholds, masks)
+
+        self.assertEqual(rows[0]["valid_samples"], 3)
+        self.assertEqual(rows[0]["masked_samples"], 1)
+        self.assertEqual(rows[0]["false_positive_rate"], 0.0)
+        self.assertEqual(rows[0]["f1"], 1.0)
+        self.assertEqual(summary["known_macro_f1"], 0.2)
+
+    def test_threshold_calibration_ignores_masked_labels(self) -> None:
+        labels = np.zeros((4, 6), dtype=np.float32)
+        masks = np.ones_like(labels)
+        probabilities = np.zeros_like(labels)
+        labels[0, 0] = 1.0
+        probabilities[0, 0] = 0.8
+        labels[1, 5] = 1.0
+        masks[1, 0] = 0.0
+        probabilities[1, 0] = 0.9
+
+        thresholds = masked_threshold_calibration(labels, probabilities, masks, grid=np.asarray([0.5, 0.85]))
+
+        self.assertEqual(float(thresholds[0]), 0.5)
 
 
 class PathSourceTests(unittest.TestCase):
